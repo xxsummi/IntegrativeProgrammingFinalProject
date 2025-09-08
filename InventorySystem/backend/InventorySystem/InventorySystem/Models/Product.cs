@@ -13,14 +13,15 @@ namespace InventorySystem.Models
         [Required]
         public string Name { get; set; } = string.Empty;
 
-        public string? Description { get; set; } = string.Empty;
+        [Required]
+        public string Description { get; set; } = string.Empty;
 
         [Required]
-        public decimal Price { get; set; }
+        public double Price { get; set; } = 0;
 
         [Required]
         public int Stock { get; set; } = 0;
 
-        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 }

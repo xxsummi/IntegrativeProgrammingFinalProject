@@ -85,7 +85,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
+              "type": "string",
               "format": "uuid"
             }
           }
@@ -163,6 +163,7 @@
     "schemas": {
       "Product": {
         "required": [
+          "description",
           "name",
           "price",
           "sku",
@@ -183,8 +184,8 @@
             "type": "string"
           },
           "description": {
-            "type": "string",
-            "nullable": true
+            "minLength": 1,
+            "type": "string"
           },
           "price": {
             "type": "number",

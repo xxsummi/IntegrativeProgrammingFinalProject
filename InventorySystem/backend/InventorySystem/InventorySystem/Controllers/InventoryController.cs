@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace InventorySystem.Controllers
 {
     [ApiController]
-    [Route("api/products/")]
+    [Route("api/products")]
     public class InventoryController : ControllerBase
     {
         private readonly ProductDbContext _context;
@@ -40,7 +40,7 @@ namespace InventorySystem.Controllers
             });
         }
 
-        [HttpGet("{id:int}")]
+        [HttpGet("{id:Guid}")]
         public async Task<IActionResult> GetProduct(Guid id)
         {
             var product = await _context.Products.FindAsync(id);
@@ -51,10 +51,11 @@ namespace InventorySystem.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateProduct([FromBody] Product product)
         {
-            if (!ModelState.IsValid)
+            if (!ModelState.IsValid || (await _context.Products.AnyAsync(p => p.Sku == product.Sku)))
             {
                 return BadRequest(ModelState);
             }
+
             Console.WriteLine("Name: " + product.Name);
             Console.WriteLine("Description: " + product.Description);
             Console.WriteLine("Price: " + product.Price);
@@ -62,6 +63,7 @@ namespace InventorySystem.Controllers
             Console.WriteLine("SKU: " + product.Sku);
 
             product.Id = Guid.NewGuid();
+            product.UpdatedAt = DateTime.UtcNow;
             _context.Products.Add(product);
             await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
@@ -71,7 +73,7 @@ namespace InventorySystem.Controllers
         public async Task<IActionResult> UpdateProduct(Guid id, [FromBody] Product product)
         {
             if (id != product.Id) return BadRequest();
-            if (!ModelState.IsValid)
+            if (!ModelState.IsValid || (await _context.Products.AnyAsync(p => p.Sku == product.Sku && p.Id != id)))
             {
                 return BadRequest(ModelState);
             }
@@ -83,7 +85,7 @@ namespace InventorySystem.Controllers
             existingProduct.Price = product.Price;
             existingProduct.Stock = product.Stock;
             existingProduct.Sku = product.Sku;
-            existingProduct.UpdatedAt = DateTime.Now;
+            existingProduct.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return NoContent();
         }

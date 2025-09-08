@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace InventorySystem.Migrations
 {
     [DbContext(typeof(ProductDbContext))]
-    [Migration("20250908033246_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250908043414_UpdatedModel")]
+    partial class UpdatedModel
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -32,14 +32,15 @@ namespace InventorySystem.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<decimal>("Price")
-                        .HasColumnType("numeric");
+                    b.Property<double>("Price")
+                        .HasColumnType("double precision");
 
                     b.Property<string>("Sku")
                         .IsRequired()
