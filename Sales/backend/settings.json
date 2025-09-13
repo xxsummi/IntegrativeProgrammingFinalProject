@@ -25,13 +25,13 @@
     "version": "1.0.0",
     "main":"server.js",
     "scripts":{
-        "start":"node server.js", //normally starts the 
-        "dev": "nodemon app.js"
+        "start":"node sales_server.js", //normally starts the 
+        "dev": "nodemon sales_server.js"
     },
     "dependencies":{
         "cors":"^2.8.5",
         "express":"^5.1.0",
         "mariadb":"^3.3.0",
-        "mysql":"^3.11.3"
+        "mysql2":"^3.11.3"
     }
 }
