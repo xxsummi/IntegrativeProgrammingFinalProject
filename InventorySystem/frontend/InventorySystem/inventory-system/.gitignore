@@ -1,11 +1,3 @@
-.vs/
-bin/
-obj/
-*.dll
-*.exe
-*.pdb
-
-
 .DS_Store
 node_modules
 /dist
