@@ -1,0 +1,148 @@
+.wrapper{
+    width: 420px;
+    background: transparent;
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, .2);
+    border-radius: 10px;
+    padding: 30px 40px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, .2);
+    text-align: center;
+    margin-top: 80px;
+}
+.wrapper h1{
+    font-size: 36px;
+    text-align: center;
+}
+.wrapper .input-box{
+    width: 100%;
+    height: 50px;
+    background: transparent;
+    margin: 30px 0;
+    position: relative;
+}
+.input-box input{
+    height: 100%;
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    border: 2px solid rgba(255, 255, 255, .2);
+    border-radius: 40px;
+    color: white;
+    padding-right: 50px;
+    padding-left: 20px;
+
+}
+
+.input-box input::placeholder{
+    color: white;
+}
+.input-box .icon{
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    color: #fff;
+    pointer-events: none;
+}
+
+.wrapper .remeber-forgot{
+    display: flex;
+    justify-content: space-between;
+    font-size: 14.5px;
+    margin: -15px 0 15px;
+}
+
+.remeber-forgot label input{ 
+    accent-color: #fff;
+    margin-right: 4px;
+}
+
+.remeber-forgot a{
+    color: #fff;
+    text-decoration: none;
+}
+
+.remeber-forgot a:hover{
+    text-decoration: underline;
+}
+
+.wrapper button{ 
+    width: 100%;
+    height: 45px;
+    border-radius: 40px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.wrapper .register-link{
+    font-size: 14.5px;
+    margin: 20px 0 15px;
+}
+
+.register-link p{
+    margin-top: 10px;
+}
+
+.register-link p a{
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.register-link p a:hover{
+    text-decoration: underline;
+}
+
+/* Success/Error Message Styles */
+.message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    animation: slideIn 0.3s ease-out;
+}
+
+.message.success {
+    background-color: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+}
+
+.message.error {
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.message svg {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Button disabled state */
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+button:disabled:hover {
+    transform: none;
+}
