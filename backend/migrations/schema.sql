@@ -42,19 +42,27 @@ FOREIGN KEY (product_sku) REFERENCES products(sku)
 
 -- Don Macchiato Products
 INSERT INTO products (sku, name, unit_price, stock) VALUES
-('CARAMEL001','Caramel Macchiato',45.00,50),
-('MATCHATOS001','Matchatos',42.00,50),
-('DONYA001','Donya Berry',48.00,50),
-('DARKO001','Darko Macchiato',46.00,50),
-('MATCHABERRY001','Matcha Berry',44.00,50),
-('OREO001','Oreo Macchiato',47.00,50),
-('SPANISH001','Spanish Latte',49.00,50),
-('BLACKFOREST001','Black Forest',50.00,50),
-('PISTACIO001','Pistacio Macchiato',52.00,50);
+('CARAMEL001','Caramel Macchiato',39.00,50),
+('MATCHATOS001','Matchatos',39.00,50),
+('DONYA001','Donya Berry',39.00,50),
+('DARKO001','Darko Macchiato',39.00,50),
+('MATCHABERRY001','Matcha Berry',39.00,50),
+('OREO001','Oreo Macchiato',39.00,50),
+('SPANISH001','Spanish Latte',39.00,50),
+('BLACKFOREST001','Black Forest',39.00,50),
+('PISTACIO001','Pistacio Macchiato',39.00,50);
 
 
 -- sample user (password: password123)
 -- generate the bcrypt hash in your backend; placeholder here
 INSERT INTO users (name, email, password_hash, role) VALUES
-('Cheska','cheska@example.com','$2b$10$PLACEHOLDER_HASH', 'cashier');
+('Cheska','cheska@gmail.com','$2b$10$p/pDuOuezSj4vCBmsPV3G.8VrwydV/zOtei3i9oSTUzu7nLaGIiHe', 'cashier');
+
+INSERT INTO users (name, email, password_hash, role) VALUES
+('Nino','lepasana@gmail.com','$2b$10$p/pDuOuezSj4vCBmsPV3G.8VrwydV/zOtei3i9oSTUzu7nLaGIiHe', 'admin');
+
+
+
+INSERT INTO users (name, email, password_hash, role) VALUES
+('Jeskha','derama@gmail.com','$2b$10$p/pDuOuezSj4vCBmsPV3G.8VrwydV/zOtei3i9oSTUzu7nLaGIiHe', 'manager');
 
