@@ -16,22 +16,16 @@ const Sales = () => {
 
   // After fetching both products and stats we'll join them into display list
 
-  useEffect(() => {
-    fetchProducts();
-    fetchRecentSales();
-    // For now use a dummy stats visualization (Caramel Macchiato as top-seller)
-    // We'll still attempt to fetch real stats if the endpoint exists, but provide a deterministic fallback.
-    const dummy = [
-      { product_sku: 'CARAMEL001', product_name: 'Caramel Macchiato', total_quantity: 2500 },
-      { product_sku: 'DONYA001', product_name: 'Donya Berry', total_quantity: 1200 },
-      { product_sku: 'OREO001', product_name: 'Oreo Macchiato', total_quantity: 950 },
-      { product_sku: 'SPANISH001', product_name: 'Spanish Latte', total_quantity: 600 }
-    ];
-    setStats(dummy);
+useEffect(() => {
+  const loadData = async () => {
+    await fetchProducts();  // fetch products first
+    await fetchRecentSales(); // wait for recent sales
     setStatsLoading(false);
-    // still try to fetch real stats in background
     fetchStats();
-  }, []);
+  };
+  loadData();
+}, []);
+
 
   const fetchProducts = async () => {
     try {
@@ -64,19 +58,31 @@ const Sales = () => {
     }
   };
 
-  const fetchRecentSales = async () => {
-    try {
-      setRecentSalesLoading(true);
-      const data = await apiService.getRecentSales();
-      setRecentSales(data);
-      setRecentSalesError('');
-    } catch (err) {
-      console.error('Error fetching recent sales:', err);
-      setRecentSalesError('Failed to load recent sales');
-    } finally {
-      setRecentSalesLoading(false);
-    }
-  };
+const fetchRecentSales = async () => {
+  try {
+    setRecentSalesLoading(true);
+    const data = await apiService.getRecentSales();
+
+    // Merge product info (name and unit_price) from products list
+    const merged = data.map(sale => {
+      const product = products.find(p => p.sku === sale.product_sku);
+      return {
+        ...sale,
+        product_name: product ? product.name : sale.product_sku,
+        unit_price: product ? Number(product.unit_price) : 0
+      };
+    });
+
+    setRecentSales(merged); // ✅ Use merged, not data
+    setRecentSalesError('');
+  } catch (err) {
+    console.error('Error fetching recent sales:', err);
+    setRecentSalesError('Failed to load recent sales');
+  } finally {
+    setRecentSalesLoading(false);
+  }
+};
+
 
   // Combine products with sales stats to compute total_sold (default 0)
   const mergedProducts = products.map(p => {

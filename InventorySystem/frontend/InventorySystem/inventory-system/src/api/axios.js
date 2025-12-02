@@ -2,7 +2,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'https://localhost:7266/api', // your .NET API
+  baseURL: 'http://localhost:5099/api', // your .NET API
   headers: {
     'Content-Type': 'application/json',
   },

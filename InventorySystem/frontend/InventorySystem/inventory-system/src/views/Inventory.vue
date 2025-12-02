@@ -42,7 +42,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import axios from 'axios'
+import api from '../api/axios'
 import InventoryTable from '../components/InventoryTable.vue'
 
 const showAddDialog = ref(false)
@@ -59,7 +59,7 @@ const tableRef = ref(null)
 
 const addProduct = async () => {
   try {
-    await axios.post('https://localhost:7266/api/products', newProduct.value)
+    await api.post('/products', newProduct.value) // use api instead of axios
     showAddDialog.value = false
     newProduct.value = { name: '', description: '', price: 0, stock: 0, sku: '' }
     if (tableRef.value?.fetchProducts) {

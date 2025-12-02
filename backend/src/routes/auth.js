@@ -42,4 +42,35 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// POST /api/auth/register-customer
+router.post("/register-customer", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    // Validate input
+    if (!name || !email || !password)
+      return res.status(400).json({ message: "All fields required" });
+
+    // Check if user already exists
+    const [existing] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+    if (existing.length > 0)
+      return res.status(400).json({ message: "User with this email already exists" });
+
+    // Hash password
+    const hashed = await bcrypt.hash(password, 10);
+
+    // Insert into database
+    await pool.query(
+      "INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, 'customer')",
+      [name, email, hashed]
+    );
+
+    res.json({ message: "Customer registered successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Registration failed" });
+  }
+});
+
+
 module.exports = router;

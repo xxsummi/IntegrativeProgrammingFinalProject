@@ -116,7 +116,7 @@
 </template>
 
 <script>
-import axios from 'axios'
+import api from '../api/axios'
 
 export default {
   name: 'InventoryTable',
@@ -152,7 +152,7 @@ export default {
   methods: {
     async fetchProducts() {
       try {
-        const response = await axios.get('https://localhost:7266/api/products', {
+        const response = await api.get('/products', {
           params: {
             page: this.page,
             pageSize: this.pageSize,
@@ -167,7 +167,7 @@ export default {
     },
     async addProduct() {
       try {
-        await axios.post('https://localhost:7266/api/products', this.newProduct)
+        await api.post('/products', this.newProduct)
         this.showAddDialog = false
         this.newProduct = { name: '', description: '', price: 0, stock: 0, sku: '' }
         this.fetchProducts()
@@ -185,7 +185,7 @@ export default {
     },
     async saveEdit() {
       try {
-        await axios.put(`https://localhost:7266/api/products/${this.editProduct.id}`, this.editProduct)
+        await api.put(`/products/${this.editProduct.id}`, this.editProduct)
         this.editDialogVisible = false
         this.fetchProducts()
       } catch (err) {
@@ -195,7 +195,7 @@ export default {
     async deleteProduct(id) {
       if (confirm('Are you sure you want to delete this product?')) {
         try {
-          await axios.delete(`https://localhost:7266/api/products/${id}`)
+          await api.delete(`/products/${id}`)
           this.fetchProducts()
         } catch (err) {
           console.error(err)
@@ -206,7 +206,7 @@ export default {
       const amount = prompt('Enter amount to add:', 1)
       if (amount && !isNaN(amount)) {
         try {
-          await axios.put(`https://localhost:7266/api/products/${product.id}/addstock`, {
+          await api.put(`/products/${product.id}/addstock`, {
             amount: parseInt(amount)
           })
           this.fetchProducts()

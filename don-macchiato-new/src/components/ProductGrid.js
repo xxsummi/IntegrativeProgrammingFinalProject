@@ -9,7 +9,7 @@ function ProductGrid() {
 
   // Fetch products on load
   useEffect(() => {
-    axios.get("http://localhost:8080/api/products")
+    axios.get("http://localhost:3000/api/products")
       .then(res => setProducts(res.data))
       .catch(err => console.error("Failed to fetch products:", err));
   }, []);
@@ -18,7 +18,7 @@ function ProductGrid() {
   const handleBuy = (product) => {
     const updatedCart = [...cart, product];
     setCart(updatedCart);
-    setTotal(prev => prev + Number(product.price));
+    setTotal(prev => prev + Number(product.unit_price));
   };
 
   // Finalize purchase
@@ -29,15 +29,30 @@ function ProductGrid() {
     }
 
     try {
-      // For simplicity, we just send one request per product
-      // You could optimize this into a single "bulk order" request
-      for (const product of cart) {
-        await axios.post("http://localhost:8080/api/buy", {
-          user_id: 1,             // hardcoded for demo
-          product_sku: product.sku,
+      const salePayload = {
+        items: cart.map(item => ({
+          product_sku: item.sku,
           quantity: 1
-        });
+        }))
+      };
+
+      // Get token from localStorage
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("You must be logged in to purchase.");
+        return;
       }
+
+      // Send request with Authorization header
+      await axios.post(
+        "http://localhost:3000/api/sales",
+        salePayload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
 
       alert(`Purchase successful! Total: ₱${total}`);
 
@@ -50,6 +65,15 @@ function ProductGrid() {
     }
   };
 
+  // Remove item from cart
+  const handleRemove = (index) => {
+    const itemToRemove = cart[index];
+    const updatedCart = cart.filter((_, idx) => idx !== index);
+    setCart(updatedCart);
+    setTotal(prev => prev - Number(itemToRemove.unit_price));
+  };
+
+
   return (
     <div>
       <div className="grid-container">
@@ -57,7 +81,7 @@ function ProductGrid() {
           <div className="product-card" key={p.sku}>
             <div className="product-image">📷</div>
             <h3>{p.name}</h3>
-            <p>₱{p.price}</p>
+            <p>₱{p.unit_price}</p>
             <button onClick={() => handleBuy(p)}>Buy</button>
           </div>
         ))}
@@ -68,7 +92,10 @@ function ProductGrid() {
         <h2>Cart</h2>
         <ul>
           {cart.map((item, idx) => (
-            <li key={idx}>{item.name} - ₱{item.price}</li>
+            <li key={idx}>
+              {item.name} - ₱{item.unit_price}{" "}
+              <button onClick={() => handleRemove(idx)}>Remove</button>
+            </li>
           ))}
         </ul>
         <h3>Total: ₱{total}</h3>
