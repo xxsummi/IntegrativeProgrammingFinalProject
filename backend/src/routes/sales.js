@@ -3,8 +3,55 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 const auth = require("../middleware/auth");
+const axios = require("axios");
+const WebSocket = require("ws");
 
-// ✅ GET /api/sales/stats - aggregated sold quantities per product (any authenticated user)
+// Inventory system config
+const INVENTORY_API_BASE = "http://localhost:5099/api/products"; // Inventory API
+const INVENTORY_WS_URL = "ws://localhost:8080"; // Inventory WebSocket
+let ws;
+
+// Connect to Inventory WebSocket
+function connectWS() {
+  ws = new WebSocket(INVENTORY_WS_URL);
+
+  ws.on("open", () => {
+    console.log("Connected to Inventory WebSocket server");
+  });
+
+  ws.on("message", (message) => {
+    console.log("Message from Inventory WS:", message.toString());
+  });
+
+  ws.on("close", () => {
+    console.log("Inventory WS connection closed. Reconnecting in 3s...");
+    setTimeout(connectWS, 3000);
+  });
+
+  ws.on("error", (err) => {
+    console.error("Inventory WS error:", err);
+    ws.close();
+  });
+}
+
+// Initialize WebSocket connection
+connectWS();
+
+
+// ---------------------- ROUTES ----------------------
+
+//GET /api/sales/products - fetch products from Inventory
+router.get("/products", auth, async (req, res) => {
+  try {
+    const response = await axios.get(INVENTORY_API_BASE);
+    return res.json(response.data);
+  } catch (err) {
+    console.error("Failed to fetch products from Inventory:", err.message);
+    return res.status(500).json({ message: "Failed to fetch products" });
+  }
+});
+
+//GET /api/sales/stats
 router.get("/stats", auth, async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -28,7 +75,7 @@ router.get("/stats", auth, async (req, res) => {
   }
 });
 
-// ✅ GET /api/sales/recent - last 5 sales with basic info
+//GET /api/sales/recent
 router.get("/recent", auth, async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -46,7 +93,7 @@ router.get("/recent", auth, async (req, res) => {
   }
 });
 
-// ✅ GET /api/sales - admin or manager can view all
+//GET /api/sales (admin/manager only)
 router.get("/", auth, async (req, res) => {
   if (req.user.role !== "admin" && req.user.role !== "manager") {
     return res.status(403).json({ message: "Forbidden" });
@@ -67,7 +114,7 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
-// ✅ POST /api/sales - create a sale with items, decrement stock transactionally
+//POST /api/sales - create a sale and notify Inventory
 router.post("/", auth, async (req, res) => {
   const { items } = req.body;
   if (!Array.isArray(items) || items.length === 0) {
@@ -82,32 +129,26 @@ router.post("/", auth, async (req, res) => {
     let saleTotal = 0;
     const saleItemsToInsert = [];
 
-    // Validate stock and compute totals
+    // Validate stock and compute totals via Inventory API
     for (const item of items) {
       const { product_sku, quantity } = item;
       if (!product_sku || !Number.isInteger(quantity) || quantity <= 0) {
         throw new Error("Invalid item payload");
       }
 
-      // Lock the product row FOR UPDATE
-      const [productRows] = await conn.query(
-        "SELECT sku, unit_price, stock FROM products WHERE sku = ? FOR UPDATE",
-        [product_sku]
-      );
-      if (productRows.length === 0) {
-        throw new Error(`Product not found: ${product_sku}`);
-      }
-      const product = productRows[0];
-      if (product.stock < quantity) {
-        throw new Error(`Insufficient stock for ${product_sku}`);
-      }
+      // Fetch product info from Inventory
+      const inventoryResponse = await axios.get(`${INVENTORY_API_BASE}/${encodeURIComponent(product_sku)}`);
+      const product = inventoryResponse.data;
 
-      const lineTotal = Number(product.unit_price) * quantity;
+      if (!product) throw new Error(`Product not found: ${product_sku}`);
+      if (product.stock < quantity) throw new Error(`Insufficient stock for ${product_sku}`);
+
+      const lineTotal = Number(product.price) * quantity;
       saleTotal += lineTotal;
       saleItemsToInsert.push({
         product_sku: product.sku,
         quantity,
-        unit_price: product.unit_price,
+        unit_price: product.price,
       });
     }
 
@@ -118,19 +159,20 @@ router.post("/", auth, async (req, res) => {
     );
     const saleId = saleResult.insertId;
 
-    // Insert sale items and decrement stock
+    // Insert sale items
     for (const si of saleItemsToInsert) {
       await conn.query(
         "INSERT INTO sale_items (sale_id, product_sku, quantity, unit_price) VALUES (?, ?, ?, ?)",
         [saleId, si.product_sku, si.quantity, si.unit_price]
       );
-      await conn.query("UPDATE products SET stock = stock - ? WHERE sku = ?", [
-        si.quantity,
-        si.product_sku,
-      ]);
     }
 
     await conn.commit();
+
+    // Send sale info to Inventory WS to decrement stock
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ saleId, items: saleItemsToInsert }));
+    }
 
     return res.status(201).json({
       id: saleId,
@@ -141,15 +183,14 @@ router.post("/", auth, async (req, res) => {
     });
   } catch (err) {
     if (conn) await conn.rollback();
-    const message =
-      err && err.message ? err.message : "Failed to create sale";
+    const message = err?.message || "Failed to create sale";
     return res.status(400).json({ message });
   } finally {
     if (conn) conn.release();
   }
 });
 
-// ✅ GET /api/sales/:id - get a sale with its items (auth required; admin or owner)
+//GET /api/sales/:id
 router.get("/:id", auth, async (req, res) => {
   const { id } = req.params;
   try {
@@ -164,7 +205,7 @@ router.get("/:id", auth, async (req, res) => {
       return res.status(404).json({ message: "Sale not found" });
 
     const sale = salesRows[0];
-    // Only admin or owner can view
+
     if (!(req.user.role === "admin" || req.user.id === sale.user_id)) {
       return res.status(403).json({ message: "Forbidden" });
     }
@@ -178,10 +219,7 @@ router.get("/:id", auth, async (req, res) => {
       [id]
     );
 
-    return res.json({
-      ...sale,
-      items: itemRows,
-    });
+    return res.json({ ...sale, items: itemRows });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });
