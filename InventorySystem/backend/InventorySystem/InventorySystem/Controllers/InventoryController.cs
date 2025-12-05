@@ -2,6 +2,7 @@
 using InventorySystem.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
 
 namespace InventorySystem.Controllers
 {
@@ -10,10 +11,12 @@ namespace InventorySystem.Controllers
     public class InventoryController : ControllerBase
     {
         private readonly ProductDbContext _context;
+        private readonly IHubContext<InventoryHub> _hubContext;
 
-        public InventoryController(ProductDbContext context)
+        public InventoryController(ProductDbContext context, IHubContext<InventoryHub> hubContext)
         {
             _context = context;
+            _hubContext = hubContext;
         }
 
         [HttpGet]
@@ -29,6 +32,7 @@ namespace InventorySystem.Controllers
             var totalItems = await query.CountAsync();
 
             var products = await query
+                .OrderBy(p => p.Name)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -66,6 +70,8 @@ namespace InventorySystem.Controllers
             product.UpdatedAt = DateTime.UtcNow;
             _context.Products.Add(product);
             await _context.SaveChangesAsync();
+            
+            await _hubContext.Clients.Group("InventoryUsers").SendAsync("ProductAdded", product);
             return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
         }
 
@@ -87,6 +93,8 @@ namespace InventorySystem.Controllers
             existingProduct.Sku = product.Sku;
             existingProduct.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+            
+            await _hubContext.Clients.Group("InventoryUsers").SendAsync("StockUpdated", new { sku = existingProduct.Sku, stock = existingProduct.Stock });
             return NoContent();
         }
 
@@ -97,9 +105,61 @@ namespace InventorySystem.Controllers
             if (product == null) return NotFound();
             _context.Products.Remove(product);
             await _context.SaveChangesAsync();
+            
+            await _hubContext.Clients.Group("InventoryUsers").SendAsync("ProductDeleted", id);
             return NoContent();
         }
 
+        [HttpPost("addstock/{id}")]
+        public async Task<IActionResult> AddStock(Guid id, [FromBody] AddStockRequest request)
+        {
+            var product = await _context.Products.FindAsync(id);
+            if (product == null) return NotFound();
+            
+            product.Stock += request.Amount;
+            product.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            
+            await _hubContext.Clients.Group("InventoryUsers").SendAsync("StockUpdated", new { sku = product.Sku, stock = product.Stock });
+            return Ok(new { stock = product.Stock });
+        }
+
+        [HttpGet("{sku}")]
+        public async Task<IActionResult> GetProductBySku(string sku)
+        {
+            var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == sku);
+            if (product == null) return NotFound();
+            return Ok(product);
+        }
     }
 
+    public class AddStockRequest
+    {
+        public int Amount { get; set; }
+    }
+
+    [ApiController]
+    [Route("api/notify")]
+    public class NotificationController : ControllerBase
+    {
+        private readonly IHubContext<InventoryHub> _hubContext;
+
+        public NotificationController(IHubContext<InventoryHub> hubContext)
+        {
+            _hubContext = hubContext;
+        }
+
+        [HttpPost("stock-update")]
+        public async Task<IActionResult> NotifyStockUpdate([FromBody] StockUpdateNotification notification)
+        {
+            await _hubContext.Clients.Group("InventoryUsers").SendAsync("StockUpdated", new { sku = notification.Sku, stock = notification.Stock });
+            return Ok();
+        }
+    }
+
+    public class StockUpdateNotification
+    {
+        public string Sku { get; set; } = string.Empty;
+        public int Stock { get; set; }
+    }
 }

@@ -117,6 +117,7 @@
 
 <script>
 import api from '../api/axios'
+import signalr from '../api/signalr'
 
 export default {
   name: 'InventoryTable',
@@ -146,8 +147,28 @@ export default {
       }
     }
   },
-  mounted() {
+  async mounted() {
     this.fetchProducts()
+    await signalr.connect()
+    
+    signalr.on('stockUpdated', (data) => {
+      const product = this.products.find(p => p.sku === data.sku)
+      if (product) {
+        product.stock = data.stock
+      }
+    })
+    
+    signalr.on('productAdded', () => {
+      this.fetchProducts()
+    })
+    
+    signalr.on('productDeleted', () => {
+      this.fetchProducts()
+    })
+  },
+  
+  beforeUnmount() {
+    signalr.disconnect()
   },
   methods: {
     async fetchProducts() {
@@ -170,7 +191,6 @@ export default {
         await api.post('/products', this.newProduct)
         this.showAddDialog = false
         this.newProduct = { name: '', description: '', price: 0, stock: 0, sku: '' }
-        this.fetchProducts()
       } catch (err) {
         console.error('Failed to add product:', err)
       }

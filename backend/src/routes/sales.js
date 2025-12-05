@@ -13,7 +13,8 @@ let ws;
 
 // Connect to Inventory WebSocket
 function connectWS() {
-  ws = new WebSocket(INVENTORY_WS_URL);
+  const wsUrl = `${INVENTORY_WS_URL}?token=sales-system-token`;
+  ws = new WebSocket(wsUrl);
 
   ws.on("open", () => {
     console.log("Connected to Inventory WebSocket server");
@@ -23,9 +24,12 @@ function connectWS() {
     console.log("Message from Inventory WS:", message.toString());
   });
 
-  ws.on("close", () => {
-    console.log("Inventory WS connection closed. Reconnecting in 3s...");
-    setTimeout(connectWS, 3000);
+  ws.on("close", (code, reason) => {
+    console.log(`Inventory WS connection closed. Code: ${code}, Reason: ${reason}`);
+    if (code !== 1008) { // Don't reconnect if unauthorized
+      console.log("Reconnecting in 3s...");
+      setTimeout(connectWS, 3000);
+    }
   });
 
   ws.on("error", (err) => {
@@ -44,7 +48,9 @@ connectWS();
 router.get("/products", auth, async (req, res) => {
   try {
     const response = await axios.get(INVENTORY_API_BASE);
-    return res.json(response.data);
+    // Extract products array from inventory response
+    const products = response.data.products || [];
+    return res.json(products);
   } catch (err) {
     console.error("Failed to fetch products from Inventory:", err.message);
     return res.status(500).json({ message: "Failed to fetch products" });
@@ -89,6 +95,47 @@ router.get("/recent", auth, async (req, res) => {
     return res.json(rows);
   } catch (err) {
     console.error("Error fetching recent sales:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// GET /api/sales/embedded - for embedded frontend (no auth required)
+router.get("/embedded", async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT s.id, s.user_id, u.name AS cashier, s.total, s.created_at
+       FROM sales s
+       JOIN users u ON u.id = s.user_id
+       ORDER BY s.created_at DESC
+       LIMIT 100`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// GET /api/sales/embedded/stats - for embedded frontend (no auth required)
+router.get("/embedded/stats", async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT si.product_sku, p.name AS product_name, SUM(si.quantity) AS total_quantity
+       FROM sale_items si
+       JOIN products p ON p.sku = si.product_sku
+       GROUP BY si.product_sku, p.name
+       ORDER BY total_quantity DESC`
+    );
+
+    const normalized = rows.map((r) => ({
+      product_sku: r.product_sku,
+      product_name: r.product_name,
+      total_quantity: Number(r.total_quantity || 0),
+    }));
+
+    return res.json(normalized);
+  } catch (err) {
+    console.error(err);
     return res.status(500).json({ message: "Server error" });
   }
 });

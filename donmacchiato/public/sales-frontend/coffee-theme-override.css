@@ -1,0 +1,257 @@
+/* Complete Dashboard Redesign for Embedded POS */
+
+/* Reset and base styles */
+* {
+  box-sizing: border-box !important;
+}
+
+body {
+  background: #f8fafc !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #654321 !important;
+}
+
+/* Header redesign to match main app */
+header {
+  background: white !important;
+  padding: 16px 24px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  margin: 0 !important;
+}
+
+header h1 {
+  font-size: 1.4rem !important;
+  font-weight: 700 !important;
+  color: #654321 !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+header h1::before {
+  content: "📊" !important;
+  font-size: 1.5rem !important;
+  color: #8B4513 !important;
+}
+
+/* Main content area */
+main {
+  padding: 20px !important;
+  background: #f8fafc !important;
+  min-height: calc(100vh - 80px) !important;
+}
+
+/* Summary boxes redesign to match KPI cards */
+div[style*="display:flex"][style*="gap:20px"] {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  gap: 16px !important;
+  margin-bottom: 24px !important;
+}
+
+/* Individual summary boxes */
+div[style*="width:250px"][style*="background:#654321"],
+div[style*="background:#654321"] {
+  background: white !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid #e2e8f0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+  width: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+}
+
+/* Add colored top border like KPI cards */
+div[style*="background:#6d501bc0"]:first-child::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 4px !important;
+  background: linear-gradient(90deg, #8B4513, #D2691E) !important;
+}
+
+div[style*="background:#6d501bc0"]:last-child::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 4px !important;
+  background: linear-gradient(90deg, #8B6914, #A0522D) !important;
+}
+
+/* Add icons to summary boxes */
+div[style*="background:#6d501bc0"]:first-child::after {
+  content: "📈" !important;
+  font-size: 1.4rem !important;
+  width: 48px !important;
+  height: 48px !important;
+  background: linear-gradient(135deg, #8B4513, #D2691E) !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+div[style*="background:#6d501bc0"]:last-child::after {
+  content: "💰" !important;
+  font-size: 1.4rem !important;
+  width: 48px !important;
+  height: 48px !important;
+  background: linear-gradient(135deg, #8B6914, #A0522D) !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+/* Summary box text styling */
+div[style*="background:#6d501bc0"] h3 {
+  font-size: 0.9rem !important;
+  color: #64748b !important;
+  margin: 0 0 8px 0 !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+div[style*="background:#6d501bc0"] p {
+  font-size: 1.8rem !important;
+  font-weight: 700 !important;
+  color: #654321 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+}
+
+/* Refresh button styling */
+button {
+  background: #8B4513 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 12px 20px !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+}
+
+button:hover {
+  background: #D2691E !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Tables redesign */
+table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  background: white !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid #e2e8f0 !important;
+  margin-bottom: 24px !important;
+}
+
+/* Table headers */
+thead {
+  background: #f8fafc !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+th {
+  padding: 12px !important;
+  text-align: left !important;
+  font-weight: 600 !important;
+  color: #654321 !important;
+  font-size: 0.8rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  border: none !important;
+  background: #f8fafc !important;
+}
+
+/* Table cells */
+td {
+  padding: 12px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  background: white !important;
+  color: #654321 !important;
+  font-weight: 500 !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+
+tr:last-child td {
+  border-bottom: none !important;
+}
+
+tr:hover td {
+  background: #f8fafc !important;
+}
+
+/* Section headers */
+h2 {
+  color: #654321 !important;
+  font-size: 1.2rem !important;
+  font-weight: 700 !important;
+  margin: 32px 0 16px 0 !important;
+}
+
+/* Loading and error states */
+div:contains("Loading") {
+  text-align: center !important;
+  padding: 40px !important;
+  color: #654321 !important;
+  font-size: 1.1rem !important;
+}
+
+div[style*="color:red"] {
+  background: #FFF8DC !important;
+  color: #A0522D !important;
+  padding: 16px 24px !important;
+  border-radius: 12px !important;
+  margin-bottom: 24px !important;
+  border: 1px solid #F4A460 !important;
+}
+
+/* No data states */
+td[colspan="5"] {
+  text-align: center !important;
+  padding: 40px !important;
+  color: #64748b !important;
+  font-style: italic !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  main {
+    padding: 16px !important;
+  }
+  
+  div[style*="display:flex"][style*="gap:20px"] {
+    grid-template-columns: 1fr !important;
+  }
+  
+  table {
+    font-size: 0.9rem !important;
+  }
+  
+  th, td {
+    padding: 8px !important;
+  }
+}

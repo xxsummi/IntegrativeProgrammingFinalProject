@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { PiShoppingCartSimple, PiCoffeeFill, PiChartLineUpBold, PiMoneyBold } from "react-icons/pi";
+import { PiShoppingCartSimple, PiCoffeeFill, PiChartLineUpBold, PiMoneyBold, PiStorefront } from "react-icons/pi";
 import apiService from '../services/api';
+import websocketService from '../services/websocket';
 import './Sales.css';
 
 const Sales = () => {
@@ -14,27 +15,57 @@ const Sales = () => {
   const [recentSalesLoading, setRecentSalesLoading] = useState(true);
   const [recentSalesError, setRecentSalesError] = useState('');
 
-  // After fetching both products and stats we'll join them into display list
-
 useEffect(() => {
   const loadData = async () => {
-    await fetchProducts();  // fetch products first
-    await fetchRecentSales(); // wait for recent sales
+    await fetchProducts();
+    await fetchRecentSales();
     setStatsLoading(false);
     fetchStats();
   };
   loadData();
-}, []);
 
+  // Connect to WebSocket for real-time updates
+  websocketService.connect();
+  
+  const handleMessage = (data) => {
+    console.log('Received real-time update:', data);
+    if (data.status === 'success') {
+      // Refresh products when inventory is updated
+      fetchProducts();
+      fetchStats();
+    }
+  };
+
+  const handleConnected = () => {
+    console.log('WebSocket connected - real-time updates enabled');
+  };
+
+  const handleDisconnected = () => {
+    console.log('WebSocket disconnected - real-time updates disabled');
+  };
+
+  websocketService.on('message', handleMessage);
+  websocketService.on('connected', handleConnected);
+  websocketService.on('disconnected', handleDisconnected);
+
+  return () => {
+    websocketService.off('message', handleMessage);
+    websocketService.off('connected', handleConnected);
+    websocketService.off('disconnected', handleDisconnected);
+    websocketService.disconnect();
+  };
+}, []);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
       const data = await apiService.getProducts();
-      setProducts(data);
+      const productsArray = Array.isArray(data) ? data : (data?.products || []);
+      setProducts(productsArray);
       setError('');
     } catch (err) {
       console.error('Error fetching products for sales:', err);
+      setProducts([]);
       setError('Failed to load products');
     } finally {
       setLoading(false);
@@ -49,8 +80,7 @@ useEffect(() => {
       setStatsError('');
     } catch (err) {
       console.error('Error fetching sales stats:', err);
-      // As a fallback, compute dummy stats from products (zero values) so chart still shows
-      const fallback = products.map(p => ({ product_sku: p.sku, product_name: p.name, total_quantity: 0 }));
+      const fallback = (Array.isArray(products) ? products : []).map(p => ({ product_sku: p.sku, product_name: p.name, total_quantity: 0 }));
       setStats(fallback);
       setStatsError('Failed to load stats (showing placeholder)');
     } finally {
@@ -63,17 +93,16 @@ const fetchRecentSales = async () => {
     setRecentSalesLoading(true);
     const data = await apiService.getRecentSales();
 
-    // Merge product info (name and unit_price) from products list
     const merged = data.map(sale => {
-      const product = products.find(p => p.sku === sale.product_sku);
+      const product = (Array.isArray(products) ? products : []).find(p => p.sku === sale.product_sku);
       return {
         ...sale,
         product_name: product ? product.name : sale.product_sku,
-        unit_price: product ? Number(product.unit_price) : 0
+        unit_price: product ? Number(product.price || product.unit_price || 0) : 0
       };
     });
 
-    setRecentSales(merged); // ✅ Use merged, not data
+    setRecentSales(merged);
     setRecentSalesError('');
   } catch (err) {
     console.error('Error fetching recent sales:', err);
@@ -83,9 +112,7 @@ const fetchRecentSales = async () => {
   }
 };
 
-
-  // Combine products with sales stats to compute total_sold (default 0)
-  const mergedProducts = products.map(p => {
+  const mergedProducts = (Array.isArray(products) ? products : []).map(p => {
     const stat = stats.find(s => s.product_sku === p.sku);
     return {
       ...p,
@@ -93,119 +120,197 @@ const fetchRecentSales = async () => {
     };
   });
 
-  if (loading) return <div className="sales-container"><div className="loading">Loading products...</div></div>;
+  const handleNavigation = (page) => {
+    window.history.pushState({}, '', `/${page}`);
+    window.location.reload();
+  };
+
+  if (loading) return <div className="dashboard-container"><div className="loading">Loading dashboard...</div></div>;
 
   return (
-    <div className="sales-container">
-      <div className="summary-boxes">
-        <div className="summary-box">
-          <PiChartLineUpBold className="summary-icon" />
-          <div className="summary-content">
-            <h3>Total Sales</h3>
-            <p>{stats.reduce((sum, s) => sum + s.total_quantity, 0)}</p>
+    <div className="dashboard-container">
+      {/* KPI Cards */}
+      <div className="kpi-grid">
+        <div className="kpi-card revenue">
+          <div className="kpi-icon">
+            <PiMoneyBold />
+          </div>
+          <div className="kpi-content">
+            <div className="kpi-value">₱{mergedProducts.reduce((sum, p) => sum + (p.total_sold * (p.price || p.unit_price || 0)), 0).toFixed(2)}</div>
+            <div className="kpi-label">Total Revenue</div>
           </div>
         </div>
-        <div className="summary-box">
-          <PiMoneyBold className="summary-icon" />
-          <div className="summary-content">
-            <h3>Total Revenue</h3>
-            <p>₱{mergedProducts.reduce((sum, p) => sum + (p.total_sold * p.unit_price), 0).toFixed(2)}</p>
+        
+        <div className="kpi-card sales">
+          <div className="kpi-icon">
+            <PiChartLineUpBold />
+          </div>
+          <div className="kpi-content">
+            <div className="kpi-value">{stats.reduce((sum, s) => sum + s.total_quantity, 0)}</div>
+            <div className="kpi-label">Total Sales</div>
+          </div>
+        </div>
+        
+        <div className="kpi-card products">
+          <div className="kpi-icon">
+            <PiCoffeeFill />
+          </div>
+          <div className="kpi-content">
+            <div className="kpi-value">{mergedProducts.length}</div>
+            <div className="kpi-label">Products</div>
+          </div>
+        </div>
+        
+        <div className="kpi-card inventory">
+          <div className="kpi-icon">
+            <PiShoppingCartSimple />
+          </div>
+          <div className="kpi-content">
+            <div className="kpi-value">{mergedProducts.reduce((sum, p) => sum + (p.stock || 0), 0)}</div>
+            <div className="kpi-label">Total Stock</div>
           </div>
         </div>
       </div>
 
-      <div className="stats-panel">
-        <h2>Most Sold Coffees</h2>
-        {statsLoading ? (
-          <div className="loading">Loading stats...</div>
-        ) : (
-          <div className="chart-wrapper">
-            {stats.length === 0 ? (
-              <div className="no-stats">No sales yet</div>
-            ) : (
-              <svg className="bar-chart" viewBox={`0 0 100 ${Math.max(40, stats.length * 12)}`} preserveAspectRatio="none">
-                {(() => {
-                  const max = Math.max(...stats.map(s => s.total_quantity), 1);
-                  return stats.map((s, i) => {
-                    const y = 4 + i * 12;
-                    const width = (s.total_quantity / max) * 80; // percent of 80 units
-                    return (
-                      <g key={s.product_sku}>
-                        <rect x={18} y={y} width={width} height={8} fill="#6b4f4f" />
-                        <text x={0} y={y + 6} fontSize={3.5} fill="#222">{s.product_name}</text>
-                        <text x={19 + width} y={y + 6} fontSize={3.5} fill="#fff">{s.total_quantity}</text>
-                      </g>
-                    );
-                  });
-                })()}
-              </svg>
-            )}
-            {statsError && <div className="error-message">{statsError}</div>}
+      {/* Main Dashboard Grid */}
+      <div className="dashboard-grid">
+        {/* Sales Chart */}
+        <div className="dashboard-card chart-card">
+          <div className="card-header">
+            <h3>Top Selling Products</h3>
           </div>
-        )}
-      </div>
-      <div className="sales-header">
-        <h1><PiCoffeeFill className="header-icon" /> Point of Sale</h1>
+          <div className="card-content">
+            {statsLoading ? (
+              <div className="loading">Loading stats...</div>
+            ) : stats.length === 0 ? (
+              <div className="no-data">
+                <PiChartLineUpBold className="no-data-icon" />
+                <p>No sales data available</p>
+              </div>
+            ) : (
+              <div className="chart-container">
+                {stats.slice(0, 5).map((item, index) => {
+                  const maxValue = Math.max(...stats.map(s => s.total_quantity), 1);
+                  const percentage = (item.total_quantity / maxValue) * 100;
+                  return (
+                    <div key={item.product_sku} className="chart-bar">
+                      <div className="bar-info">
+                        <span className="bar-label">{item.product_name}</span>
+                        <span className="bar-value">{item.total_quantity}</span>
+                      </div>
+                      <div className="bar-container">
+                        <div 
+                          className="bar-fill" 
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Product Inventory */}
+        <div className="dashboard-card inventory-card">
+          <div className="card-header">
+            <h3>Product Inventory</h3>
+          </div>
+          <div className="card-content">
+            {loading ? (
+              <div className="loading">Loading products...</div>
+            ) : mergedProducts.length === 0 ? (
+              <div className="no-data">
+                <PiCoffeeFill className="no-data-icon" />
+                <p>No products available</p>
+              </div>
+            ) : (
+              <div className="inventory-list">
+                {mergedProducts.slice(0, 6).map(product => (
+                  <div key={product.sku} className="inventory-item">
+                    <div className="item-info">
+                      <div className="item-name">{product.name}</div>
+                      <div className="item-sku">{product.sku}</div>
+                    </div>
+                    <div className="item-stats">
+                      <div className="item-price">₱{Number(product.price || product.unit_price || 0).toFixed(2)}</div>
+                      <div className={`item-stock ${product.stock < 10 ? 'low' : ''}`}>
+                        Stock: {product.stock}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Recent Sales */}
+        <div className="dashboard-card sales-card">
+          <div className="card-header">
+            <h3>Recent Transactions</h3>
+          </div>
+          <div className="card-content">
+            {recentSalesLoading ? (
+              <div className="loading">Loading sales...</div>
+            ) : recentSales.length === 0 ? (
+              <div className="no-data">
+                <PiShoppingCartSimple className="no-data-icon" />
+                <p>No recent sales</p>
+              </div>
+            ) : (
+              <div className="sales-list">
+                {recentSales.slice(0, 5).map((sale) => (
+                  <div key={sale.id} className="sale-item">
+                    <div className="sale-info">
+                      <div className="sale-product">{sale.product_name}</div>
+                      <div className="sale-details">
+                        Qty: {sale.quantity} • {new Date(sale.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="sale-amount">
+                      ₱{(sale.unit_price * sale.quantity).toFixed(2)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="dashboard-card actions-card">
+          <div className="card-header">
+            <h3>Quick Actions</h3>
+          </div>
+          <div className="card-content">
+            <div className="action-buttons">
+              <button className="action-btn primary" onClick={() => handleNavigation('products')}>
+                <PiStorefront className="action-icon" />
+                <span>Manage Products</span>
+              </button>
+              <button className="action-btn secondary" onClick={() => handleNavigation('embedded-sales')}>
+                <PiShoppingCartSimple className="action-icon" />
+                <span>Open POS</span>
+              </button>
+            </div>
+            
+            <div className="quick-stats">
+              <div className="quick-stat">
+                <span className="stat-label">Low Stock Items</span>
+                <span className="stat-value warning">{mergedProducts.filter(p => p.stock < 10).length}</span>
+              </div>
+              <div className="quick-stat">
+                <span className="stat-label">Out of Stock</span>
+                <span className="stat-value danger">{mergedProducts.filter(p => p.stock === 0).length}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {error && <div className="error-message">{error}</div>}
-
-      <div className="sales-body">
-        <div className="products-list">
-          {mergedProducts.length === 0 ? (
-            <div className="no-products">No products available</div>
-          ) : (
-            mergedProducts.map(product => (
-              <div key={product.sku} className="product-item">
-                <div className="product-info">
-                  <div className="product-name">{product.name}</div>
-                  <div className="product-sku">SKU: {product.sku}</div>
-                  <div className="product-price">₱{Number(product.unit_price).toFixed(2)}</div>
-                  <div className={`product-stock ${product.stock < 5 ? 'low' : ''}`}>Stock: {product.stock}</div>
-                  <div className="product-sold">Times bought: {product.total_sold}</div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div className="recent-sales-panel">
-        <h2>Recent Sales</h2>
-        {recentSalesLoading ? (
-          <div className="loading">Loading recent sales...</div>
-        ) : (
-          <>
-            {recentSalesError && <div className="error-message">{recentSalesError}</div>}
-            {recentSales.length === 0 ? (
-              <div className="no-sales">No recent sales</div>
-            ) : (
-              <table className="recent-sales-table">
-                <thead>
-                  <tr>
-                    <th>Sale ID</th>
-                    <th>Product</th>
-                    <th>Quantity</th>
-                    <th>Total (₱)</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentSales.map((sale) => (
-                    <tr key={sale.id}>
-                      <td>{sale.id}</td>
-                      <td>{sale.product_name}</td>
-                      <td>{sale.quantity}</td>
-                      <td>₱{(sale.unit_price * sale.quantity).toFixed(2)}</td>
-                      <td>{new Date(sale.created_at).toLocaleDateString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </>
-        )}
-      </div>
     </div>
   );
 };

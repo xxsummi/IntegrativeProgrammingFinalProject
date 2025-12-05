@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Embedded API</title>
+</head>
+<body>
+    <h1>Testing Embedded Sales API</h1>
+    <button onclick="testAPI()">Test API Endpoints</button>
+    <div id="results"></div>
+
+    <script>
+        async function testAPI() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                // Test stats endpoint
+                const statsRes = await fetch('http://localhost:3000/api/sales/embedded/stats');
+                const statsData = await statsRes.json();
+                
+                // Test sales endpoint  
+                const salesRes = await fetch('http://localhost:3000/api/sales/embedded');
+                const salesData = await salesRes.json();
+                
+                results.innerHTML = `
+                    <h3>✅ API Test Results:</h3>
+                    <h4>Stats Endpoint:</h4>
+                    <pre>${JSON.stringify(statsData, null, 2)}</pre>
+                    <h4>Sales Endpoint:</h4>
+                    <pre>${JSON.stringify(salesData, null, 2)}</pre>
+                `;
+            } catch (error) {
+                results.innerHTML = `<h3>❌ Error:</h3><p>${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -27,10 +27,15 @@ const Products = () => {
     try {
       setLoading(true);
       const data = await apiService.getProducts();
-      setProducts(data);
+      console.log('Products data received:', data);
+      // Handle both array and object with products property
+      const productsArray = Array.isArray(data) ? data : (data?.products || []);
+      console.log('Products array:', productsArray);
+      setProducts(productsArray);
       setError('');
     } catch (err) {
       setError('Failed to fetch products');
+      setProducts([]);
       console.error('Error fetching products:', err);
     } finally {
       setLoading(false);
@@ -93,7 +98,7 @@ const Products = () => {
     setFormData({
       sku: product.sku,
       name: product.name,
-      unit_price: product.unit_price.toString(),
+      unit_price: (product.price || product.unit_price || 0).toString(),
       stock: product.stock.toString()
     });
     setShowAddForm(true);
@@ -121,21 +126,58 @@ const Products = () => {
 
   return (
     <div className="products-container">
-      <div className="products-header">
-        <h1>
-          <PiCoffeeFill className="header-icon" />
-          Don Macchiato Products
-        </h1>
-        <button 
-          className="add-product-btn"
-          onClick={() => {
-            setShowAddForm(true);
-            setEditingProduct(null);
-            setFormData({ sku: '', name: '', unit_price: '', stock: '' });
-          }}
-        >
-          <MdAdd /> Add Product
-        </button>
+      {/* Stats Cards */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon products">
+            <PiCoffeeFill />
+          </div>
+          <div className="stat-content">
+            <h3>Total Products</h3>
+            <p>{products.length}</p>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon stock">
+            <MdAdd />
+          </div>
+          <div className="stat-content">
+            <h3>Total Stock</h3>
+            <p>{products.reduce((sum, p) => sum + (p.stock || 0), 0)}</p>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon low-stock">
+            <MdDelete />
+          </div>
+          <div className="stat-content">
+            <h3>Low Stock Items</h3>
+            <p>{products.filter(p => p.stock < 10).length}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Bar */}
+      <div className="action-bar">
+        <div className="search-section">
+          <input 
+            type="text" 
+            placeholder="Search products..." 
+            className="search-input"
+          />
+        </div>
+        <div className="action-buttons">
+          <button 
+            className="add-product-btn"
+            onClick={() => {
+              setShowAddForm(true);
+              setEditingProduct(null);
+              setFormData({ sku: '', name: '', unit_price: '', stock: '' });
+            }}
+          >
+            <MdAdd /> Add Product
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -144,117 +186,139 @@ const Products = () => {
         </div>
       )}
 
-      {/* Add/Edit Product Form */}
+      {/* Products Table */}
+      <div className="products-table-container">
+        {products.length === 0 ? (
+          <div className="no-products">
+            <PiCoffeeFill className="no-products-icon" />
+            <h3>No products available</h3>
+            <p>Start by adding your first product to the inventory</p>
+          </div>
+        ) : (
+          <table className="products-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>SKU</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((product) => (
+                <tr key={product.sku} className="product-row">
+                  <td className="product-info">
+                    <div className="product-name">{product.name}</div>
+                    <div className="product-description">{product.description || 'No description'}</div>
+                  </td>
+                  <td className="product-sku">{product.sku}</td>
+                  <td className="product-price">₱{parseFloat(product.price || product.unit_price || 0).toFixed(2)}</td>
+                  <td className="product-stock">{product.stock}</td>
+                  <td className="product-status">
+                    <span className={`status-badge ${product.stock < 10 ? 'low-stock' : 'in-stock'}`}>
+                      {product.stock < 10 ? 'Low Stock' : 'In Stock'}
+                    </span>
+                  </td>
+                  <td className="product-actions">
+                    <button 
+                      className="action-btn edit"
+                      onClick={() => handleEdit(product)}
+                      title="Edit Product"
+                    >
+                      <MdEdit />
+                    </button>
+                    <button 
+                      className="action-btn delete"
+                      onClick={() => handleDelete(product.sku)}
+                      title="Delete Product"
+                    >
+                      <MdDelete />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Add/Edit Product Modal */}
       {showAddForm && (
-        <div className="product-form-overlay">
-          <div className="product-form">
-            <h2>{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label>SKU:</label>
-                <input
-                  type="text"
-                  name="sku"
-                  value={formData.sku}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="e.g., CARAMEL001"
-                />
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-header">
+              <h2>{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
+              <button 
+                className="close-btn"
+                onClick={() => setShowAddForm(false)}
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="modal-form">
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Product Name</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="e.g., Caramel Macchiato"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>SKU</label>
+                  <input
+                    type="text"
+                    name="sku"
+                    value={formData.sku}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="e.g., CARAMEL001"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Price (₱)</label>
+                  <input
+                    type="number"
+                    name="unit_price"
+                    value={formData.unit_price}
+                    onChange={handleInputChange}
+                    required
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Stock Quantity</label>
+                  <input
+                    type="number"
+                    name="stock"
+                    value={formData.stock}
+                    onChange={handleInputChange}
+                    required
+                    min="0"
+                    placeholder="0"
+                  />
+                </div>
               </div>
-              <div className="form-group">
-                <label>Product Name:</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="e.g., Caramel Macchiato"
-                />
-              </div>
-              <div className="form-group">
-                <label>Price (₱):</label>
-                <input
-                  type="number"
-                  name="unit_price"
-                  value={formData.unit_price}
-                  onChange={handleInputChange}
-                  required
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="form-group">
-                <label>Stock:</label>
-                <input
-                  type="number"
-                  name="stock"
-                  value={formData.stock}
-                  onChange={handleInputChange}
-                  required
-                  min="0"
-                  placeholder="0"
-                />
-              </div>
-              <div className="form-actions">
+              <div className="modal-actions">
+                <button type="button" className="cancel-btn" onClick={() => setShowAddForm(false)}>
+                  Cancel
+                </button>
                 <button type="submit" className="save-btn">
                   {editingProduct ? 'Update Product' : 'Add Product'}
-                </button>
-                <button 
-                  type="button" 
-                  className="cancel-btn"
-                  onClick={() => setShowAddForm(false)}
-                >
-                  Cancel
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
-      {/* Products Grid */}
-      <div className="products-grid">
-        {products.length === 0 ? (
-          <div className="no-products">
-            <PiCoffeeFill className="no-products-icon" />
-            <p>No products available</p>
-          </div>
-        ) : (
-          products.map((product) => (
-            <div key={product.sku} className="product-card">
-              <div className="product-header">
-                <h3>{product.name}</h3>
-                <div className="product-actions">
-                  <button 
-                    className="edit-btn"
-                    onClick={() => handleEdit(product)}
-                    title="Edit Product"
-                  >
-                    <MdEdit />
-                  </button>
-                  <button 
-                    className="delete-btn"
-                    onClick={() => handleDelete(product.sku)}
-                    title="Delete Product"
-                  >
-                    <MdDelete />
-                  </button>
-                </div>
-              </div>
-              <div className="product-details">
-                <p className="product-sku">SKU: {product.sku}</p>
-                <p className="product-price">₱{parseFloat(product.unit_price).toFixed(2)}</p>
-                <p className={`product-stock ${product.stock < 10 ? 'low-stock' : ''}`}>
-                  Stock: {product.stock}
-                </p>
-              </div>
-
-            </div>
-          ))
-        )}
-      </div>
     </div>
   );
 };

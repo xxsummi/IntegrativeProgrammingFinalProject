@@ -1,6 +1,7 @@
 // inventory-ws-server.js
 const WebSocket = require("ws");
 const { Pool } = require("pg");
+const axios = require("axios");
 
 // WebSocket server port
 const PORT = 8080;
@@ -14,13 +15,31 @@ const pool = new Pool({
   password: "admin",
 });
 
+// Test database connection
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error('Error connecting to PostgreSQL:', err);
+  } else {
+    console.log('Connected to PostgreSQL database');
+    release();
+  }
+});
+
 // Start WebSocket server
 const wss = new WebSocket.Server({ port: PORT }, () => {
   console.log(`Inventory WebSocket server running on ws://localhost:${PORT}`);
 });
 
-wss.on("connection", (ws) => {
-  console.log("Sales system connected via WebSocket");
+wss.on("connection", (ws, req) => {
+  // Basic authentication check
+  const token = req.url?.split('token=')[1];
+  if (!token || token !== 'sales-system-token') {
+    console.log("Unauthorized WebSocket connection attempt, token:", token);
+    ws.close(1008, "Unauthorized");
+    return;
+  }
+  
+  console.log("Sales system connected via WebSocket with token:", token);
 
   ws.on("message", async (message) => {
     try {
@@ -81,7 +100,19 @@ async function decrementStock(sku, qty) {
     );
 
     await client.query("COMMIT");
-    console.log(`Decremented ${qty} of ${sku}. New stock: ${currentStock - qty}`);
+    const newStock = currentStock - qty;
+    console.log(`Decremented ${qty} of ${sku}. New stock: ${newStock}`);
+    
+    // Notify SignalR hub about stock update
+    try {
+      await axios.post('http://localhost:5099/api/notify/stock-update', {
+        sku: sku,
+        stock: newStock
+      });
+    } catch (err) {
+      console.warn('Failed to notify SignalR hub:', err.message);
+    }
+    
     return true;
   } catch (err) {
     await client.query("ROLLBACK");

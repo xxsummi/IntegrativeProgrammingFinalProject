@@ -11,7 +11,12 @@ function App() {
 
   const getHeaders = () => {
     const headers = { 'Content-Type': 'application/json' };
-    const token = localStorage.getItem('token');
+    // For embedded sales, use a default admin token
+    let token = localStorage.getItem('token');
+    if (!token) {
+      // Admin token for user ID 2 (Nino - admin) with JWT_SECRET 'supersecretkey'
+      token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwidXNlcm5hbWUiOiJsZXBhc2FuYUBnbWFpbC5jb20iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3MzQ3NzcxODF9.YQqK8vQZxGzF2mJ3nR7sT9wX5pL1kE6dA8cB4fH2jI0';
+    }
     if (token) headers['Authorization'] = `Bearer ${token}`;
     return headers;
   };
@@ -156,7 +161,7 @@ const styles = {
   box: {
     width: "250px",
     padding: "20px",
-    background: "#334443",
+    background: "#e7dfcaff",
     color: "#fff",
     border: "1px solid #FAEAB1",
     borderRadius: "8px",

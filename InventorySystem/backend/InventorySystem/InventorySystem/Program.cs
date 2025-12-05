@@ -1,18 +1,21 @@
 using Microsoft.EntityFrameworkCore;
 using InventorySystem.DataAccess;
-
+using Microsoft.AspNetCore.SignalR;
+using InventorySystem;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowVueApp", builder =>
         builder.WithOrigins("http://localhost:8081")
                .AllowAnyHeader()
-               .AllowAnyMethod());
+               .AllowAnyMethod()
+               .AllowCredentials());
 });
 
 builder.Services.AddDbContext<ProductDbContext>(options =>
@@ -38,5 +41,6 @@ app.UseAuthorization();
 app.UseCors("AllowVueApp");
 
 app.MapControllers();
+app.MapHub<InventoryHub>("/inventoryHub");
 
 app.Run();

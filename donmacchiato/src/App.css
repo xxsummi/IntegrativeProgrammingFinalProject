@@ -1,131 +1,376 @@
-/* App Layout Styles */
-.app {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* Coffee Shop Theme Variables */
+:root {
+  --coffee-primary: #8B4513;
+  --coffee-secondary: #D2691E;
+  --coffee-accent: #F4A460;
+  --coffee-light: #FFF8DC;
+  --coffee-dark: #654321;
+  --coffee-cream: #F5F5DC;
+  --coffee-medium: #A0522D;
+  --coffee-success: #8B6914;
+  --coffee-warning: #CD853F;
+  --coffee-danger: #A0522D;
+  --coffee-info: #D2691E;
+  --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 25px rgba(0, 0, 0, 0.15);
+  --sidebar-width: 240px;
+  --sidebar-collapsed: 70px;
 }
 
-.login-page {
-  min-height: 100vh;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f8fafc;
+}
+
+/* Login Layout */
+.login-app {
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, var(--coffee-primary) 0%, var(--coffee-secondary) 100%);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  margin: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
 }
 
-.welcome-title {
-  color: white;
-  font-size: 3rem;
-  font-weight: bold;
-  margin-bottom: 30px;
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+
+.login-brand {
   text-align: center;
+  color: white;
+}
+
+.login-brand .brand-icon {
+  font-size: 4rem;
+  margin-bottom: 16px;
+  color: var(--coffee-light);
+}
+
+.login-brand h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 8px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.main-app {
+.login-brand p {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  font-weight: 300;
+}
+
+/* Dashboard Layout */
+.dashboard-app {
+  display: flex;
   min-height: 100vh;
+  background: #f1f5f9;
+}
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-width);
+  background: white;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease;
+  position: fixed;
+  height: 100vh;
+  z-index: 1000;
+  box-shadow: var(--shadow);
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed);
+}
+
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--coffee-primary);
+  color: white;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.brand-icon {
+  font-size: 1.5rem;
+  color: var(--coffee-light);
+}
+
+.collapse-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background 0.3s ease;
+}
+
+.collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 24px 0;
+}
+
+.nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.nav-item:hover {
+  background: #f8fafc;
+  color: var(--coffee-primary);
+}
+
+.nav-item.active {
+  background: linear-gradient(90deg, var(--coffee-light), transparent);
+  color: var(--coffee-primary);
+  border-right: 3px solid var(--coffee-primary);
+  font-weight: 600;
+}
+
+.nav-icon {
+  font-size: 1.4rem;
+  min-width: 24px;
+}
+
+.sidebar-footer {
+  padding: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  background: var(--coffee-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.user-details {
   display: flex;
   flex-direction: column;
 }
 
-.app-nav {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  padding: 15px 30px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+.user-name {
+  font-weight: 600;
+  color: var(--coffee-dark);
+  font-size: 0.9rem;
 }
 
-.nav-title {
-  color: white;
-  font-size: 1.8rem;
-  font-weight: bold;
-  margin: 0;
-}
-
-.nav-buttons {
-  display: flex;
-  gap: 15px;
-}
-
-.nav-btn {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 10px 20px;
-  border-radius: 25px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-weight: 500;
-}
-
-.nav-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
-}
-
-.nav-btn.active {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
+.user-role {
+  font-size: 0.8rem;
+  color: #64748b;
+  text-transform: capitalize;
 }
 
 .logout-btn {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.4);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: none;
+  border: 2px solid var(--coffee-danger);
+  color: var(--coffee-danger);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s ease;
 }
 
 .logout-btn:hover {
-  background: rgba(239, 68, 68, 0.3);
+  background: var(--coffee-danger);
+  color: white;
 }
 
-.app-content {
+/* Main Content */
+.main-content {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.3s ease;
+  width: calc(100vw - var(--sidebar-width));
+  height: 100vh;
+}
+
+.main-content.expanded {
+  margin-left: var(--sidebar-collapsed);
+  width: calc(100vw - var(--sidebar-collapsed));
+}
+
+.page-header {
+  background: white;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.page-icon {
+  font-size: 1.5rem;
+  color: var(--coffee-primary);
+}
+
+.page-title h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--coffee-dark);
+}
+
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-badge {
+  background: var(--coffee-light);
+  color: var(--coffee-dark);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid var(--coffee-accent);
+}
+
+.page-content {
   flex: 1;
   padding: 0;
+  background: #f8fafc;
+  overflow-y: auto;
+  width: 100%;
+  height: calc(100vh - 120px);
 }
 
-#root {
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
+
+
+/* Loading and Error States */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px;
+  font-size: 1.1rem;
+  color: var(--coffee-dark);
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.error-message {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 16px;
+  border-radius: 8px;
+  margin: 16px;
+  border: 1px solid #fecaca;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .sidebar {
+    transform: translateX(-100%);
   }
-  to {
-    transform: rotate(360deg);
+  
+  .sidebar.collapsed {
+    transform: translateX(-100%);
+  }
+  
+  .main-content,
+  .main-content.expanded {
+    margin-left: 0;
+  }
+  
+  .page-header {
+    padding: 16px 20px;
+  }
+  
+  .page-title h1 {
+    font-size: 1.5rem;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+@media (max-width: 768px) {
+  .login-brand h1 {
+    font-size: 2.2rem;
   }
-}
-
-h1 {
-  color: grey;
-}
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+  
+  .login-brand .brand-icon {
+    font-size: 3rem;
+  }
+  
+  .page-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  
+  .user-badge {
+    font-size: 0.8rem;
+    padding: 6px 12px;
+  }
 }

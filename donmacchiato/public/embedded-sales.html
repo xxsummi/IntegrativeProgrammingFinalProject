@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Don Macchiato - Sales Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #FAF8F1;
+            color: #333;
+        }
+        
+        .header {
+            background: #34656D;
+            color: #fff;
+            padding: 15px;
+            text-align: start;
+        }
+        
+        .header h1 {
+            margin: 0;
+        }
+        
+        .main {
+            padding: 20px;
+            background-color: #FAF8F1;
+        }
+        
+        .summary-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .box {
+            width: 250px;
+            padding: 20px;
+            background: #654321;
+            color: #fff;
+            border: 1px solid #FAEAB1;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .box h3 {
+            font-size: 18px;
+            color: #FAEAB1;
+        }
+        
+        .box p {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+        }
+        
+        .thead {
+            background-color: #34656D;
+            color: #FAF8F1;
+        }
+        
+        .th {
+            border: 1px solid white;
+            padding: 10px;
+            text-align: left;
+        }
+        
+        .td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            background-color: #bce5eaff;
+        }
+        
+        .refresh-btn {
+            padding: 10px 12px;
+            border-radius: 6px;
+            background: #654321;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .refresh-btn:hover {
+            background: #543619;
+        }
+        
+        .error {
+            color: red;
+            margin: 10px 0;
+        }
+        
+        .loading {
+            color: #654321;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Sales Dashboard</h1>
+    </header>
+
+    <main class="main">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="summary-container">
+                <div class="box">
+                    <h3>Total Sales</h3>
+                    <p id="totalSales">0</p>
+                </div>
+                <div class="box">
+                    <h3>Total Revenue</h3>
+                    <p id="totalRevenue">₱0.00</p>
+                </div>
+            </div>
+            <div>
+                <button class="refresh-btn" onclick="fetchData()">Refresh</button>
+            </div>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">Loading...</div>
+        <div id="error" class="error" style="display: none;"></div>
+
+        <h2>Sales Records</h2>
+        <table class="table">
+            <thead class="thead">
+                <tr>
+                    <th class="th">ID</th>
+                    <th class="th">Cashier</th>
+                    <th class="th">Total</th>
+                    <th class="th">Date</th>
+                </tr>
+            </thead>
+            <tbody id="salesTableBody">
+            </tbody>
+        </table>
+
+        <h2 style="margin-top: 30px;">Recent Sales (Items)</h2>
+        <table class="table">
+            <thead class="thead">
+                <tr>
+                    <th class="th">Sale ID</th>
+                    <th class="th">Product</th>
+                    <th class="th">Quantity</th>
+                    <th class="th">Unit Price</th>
+                    <th class="th">Line Total</th>
+                </tr>
+            </thead>
+            <tbody id="itemsTableBody">
+                <tr><td colspan="5" class="td">No sales yet</td></tr>
+            </tbody>
+        </table>
+    </main>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        let ws;
+
+        async function fetchData() {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            
+            try {
+                const [statsRes, salesRes] = await Promise.all([
+                    fetch(`${API_BASE}/sales/embedded/stats`),
+                    fetch(`${API_BASE}/sales/embedded`)
+                ]);
+
+                if (!statsRes.ok) {
+                    throw new Error(`Stats fetch failed: ${statsRes.statusText}`);
+                }
+                if (!salesRes.ok) {
+                    throw new Error(`Sales fetch failed: ${salesRes.statusText}`);
+                }
+
+                const stats = await statsRes.json();
+                const sales = await salesRes.json();
+
+                updateSummary(stats, sales);
+                updateSalesTable(sales);
+                
+            } catch (err) {
+                console.error(err);
+                error.textContent = err.message;
+                error.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function updateSummary(stats, sales) {
+            const totalSalesCount = stats.reduce((sum, item) => sum + (item.total_quantity || 0), 0);
+            const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+            
+            document.getElementById('totalSales').textContent = totalSalesCount;
+            document.getElementById('totalRevenue').textContent = `₱${totalRevenue.toFixed(2)}`;
+        }
+
+        function updateSalesTable(sales) {
+            const tbody = document.getElementById('salesTableBody');
+            tbody.innerHTML = '';
+            
+            if (sales.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="td">No sales yet</td></tr>';
+                return;
+            }
+            
+            sales.forEach(sale => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="td">${sale.id}</td>
+                    <td class="td">${sale.cashier || sale.user_id}</td>
+                    <td class="td">₱${Number(sale.total || 0).toFixed(2)}</td>
+                    <td class="td">${new Date(sale.created_at).toLocaleString()}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function connectWebSocket() {
+            try {
+                ws = new WebSocket('ws://localhost:8080/?token=sales-system-token');
+                
+                ws.onopen = function() {
+                    console.log('✅ Connected to inventory WebSocket');
+                };
+                
+                ws.onmessage = function(event) {
+                    console.log('📨 WebSocket message:', event.data);
+                    // Refresh data when inventory updates
+                    fetchData();
+                };
+                
+                ws.onclose = function(event) {
+                    console.log('❌ WebSocket connection closed:', event.code, event.reason);
+                    // Try to reconnect after 3 seconds
+                    setTimeout(connectWebSocket, 3000);
+                };
+                
+                ws.onerror = function(error) {
+                    console.error('🚨 WebSocket error:', error);
+                };
+            } catch (error) {
+                console.error('Failed to connect to WebSocket:', error);
+                // Try to reconnect after 5 seconds
+                setTimeout(connectWebSocket, 5000);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchData();
+            connectWebSocket();
+        });
+    </script>
+</body>
+</html>
