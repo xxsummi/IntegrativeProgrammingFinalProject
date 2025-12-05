@@ -1,0 +1,1 @@
+del "InventorySystem\frontend\InventorySystem\inventory-system\src\views\Dashboard.vue"

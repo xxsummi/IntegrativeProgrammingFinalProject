@@ -4,7 +4,7 @@ const { Pool } = require("pg");
 const axios = require("axios");
 
 // WebSocket server port
-const PORT = 8080;
+const PORT = 8081;
 
 // PostgreSQL pool using your appsettings.json connection info
 const pool = new Pool({
@@ -12,7 +12,7 @@ const pool = new Pool({
   port: 5432,
   database: "InventorySystem",
   user: "postgres",
-  password: "admin",
+  password: "password",
 });
 
 // Test database connection

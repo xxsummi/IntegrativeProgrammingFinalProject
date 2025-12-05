@@ -12,7 +12,7 @@ builder.Services.AddSignalR();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowVueApp", builder =>
-        builder.WithOrigins("http://localhost:8081")
+        builder.WithOrigins("http://localhost:8081", "http://localhost:5173", "http://localhost:8080")
                .AllowAnyHeader()
                .AllowAnyMethod()
                .AllowCredentials());
