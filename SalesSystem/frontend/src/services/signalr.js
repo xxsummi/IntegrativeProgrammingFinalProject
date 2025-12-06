@@ -8,7 +8,11 @@ class SignalRService {
   async connect() {
     try {
       this.connection = new signalR.HubConnectionBuilder()
-        .withUrl('http://localhost:5099/inventoryHub')
+        .withUrl('http://localhost:5099/inventoryHub', {
+          skipNegotiation: true,
+          transport: signalR.HttpTransportType.WebSockets
+        })
+        .configureLogging(signalR.LogLevel.Warning)
         .build();
 
       await this.connection.start();

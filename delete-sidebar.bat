@@ -1,1 +1,0 @@
-del "InventorySystem\frontend\InventorySystem\inventory-system\src\components\Sidebar.vue"

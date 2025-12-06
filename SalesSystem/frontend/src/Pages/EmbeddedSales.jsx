@@ -10,8 +10,8 @@ const EmbeddedSales = () => {
     setLoading(true);
     try {
       const [statsRes, salesRes] = await Promise.all([
-        fetch('http://localhost:3000/api/sales/stats'),
-        fetch('http://localhost:3000/api/sales')
+        fetch('http://localhost:3000/api/sales/embedded/stats'),
+        fetch('http://localhost:3000/api/sales/embedded')
       ]);
       
       if (statsRes.ok && salesRes.ok) {
@@ -52,11 +52,7 @@ const EmbeddedSales = () => {
           <h3>Orders</h3>
           <p>{sales.length}</p>
         </div>
-      </div>
-
-      <button onClick={fetchData} disabled={loading} className="refresh-btn">
-        {loading ? 'Loading...' : 'Refresh'}
-      </button>
+      </div>s
 
       <div className="sales-table">
         <h2>Recent Sales</h2>

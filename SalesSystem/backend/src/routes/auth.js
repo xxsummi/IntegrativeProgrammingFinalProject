@@ -7,17 +7,23 @@ const jwt = require("jsonwebtoken");
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
+  console.log('Login attempt:', { email, hasPassword: !!password });
+  
   if (!email || !password) return res.status(400).json({ message: "Email and password required" });
 
   try {
     // find user
     const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+    console.log('User query result:', rows.length, 'users found');
+    
     if (rows.length === 0) return res.status(401).json({ message: "Invalid credentials" });
 
     const user = rows[0];
 
     // compare password
     const isMatch = await bcrypt.compare(password, user.password_hash);
+    console.log('Password match:', isMatch);
+    
     if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
 
     // generate JWT
@@ -37,8 +43,9 @@ router.post("/login", async (req, res) => {
       token,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error('Login error details:', err.message);
+    console.error('Full error:', err);
+    res.status(500).json({ message: "Server error: " + err.message });
   }
 });
 
@@ -59,13 +66,13 @@ router.post("/register-customer", async (req, res) => {
     // Hash password
     const hashed = await bcrypt.hash(password, 10);
 
-    // Insert into database
-    await pool.query(
+    // Insert into database with customer role
+    const [result] = await pool.query(
       "INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, 'customer')",
       [name, email, hashed]
     );
 
-    res.json({ message: "Customer registered successfully" });
+    res.json({ message: "Customer registered successfully", userId: result.insertId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Registration failed" });

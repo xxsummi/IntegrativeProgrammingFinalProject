@@ -61,6 +61,7 @@
 .sales-table table {
   width: 100%;
   border-collapse: collapse;
+  color: #8B4513;
 }
 
 .sales-table th {

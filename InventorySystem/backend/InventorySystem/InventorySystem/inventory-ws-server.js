@@ -30,6 +30,9 @@ const wss = new WebSocket.Server({ port: PORT }, () => {
   console.log(`Inventory WebSocket server running on ws://localhost:${PORT}`);
 });
 
+// Track connected clients
+const clients = new Set();
+
 wss.on("connection", (ws, req) => {
   // Basic authentication check
   const token = req.url?.split('token=')[1];
@@ -40,6 +43,13 @@ wss.on("connection", (ws, req) => {
   }
   
   console.log("Sales system connected via WebSocket with token:", token);
+  clients.add(ws);
+  
+  // Keep connection alive with ping/pong
+  ws.isAlive = true;
+  ws.on('pong', () => {
+    ws.isAlive = true;
+  });
 
   ws.on("message", async (message) => {
     try {
@@ -64,8 +74,19 @@ wss.on("connection", (ws, req) => {
 
   ws.on("close", () => {
     console.log("Sales system disconnected");
+    clients.delete(ws);
   });
 });
+
+// Function to broadcast to all connected clients
+function broadcastToClients(message) {
+  const messageStr = JSON.stringify(message);
+  clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(messageStr);
+    }
+  });
+}
 
 // Function to decrement stock in PostgreSQL
 async function decrementStock(sku, qty) {
@@ -75,7 +96,7 @@ async function decrementStock(sku, qty) {
 
     // Check current stock
     const res = await client.query(
-      "SELECT stock FROM products WHERE sku = $1 FOR UPDATE",
+      "SELECT \"Stock\" FROM \"Products\" WHERE \"Sku\" = $1 FOR UPDATE",
       [sku]
     );
 
@@ -85,7 +106,7 @@ async function decrementStock(sku, qty) {
       return false;
     }
 
-    const currentStock = res.rows[0].stock;
+    const currentStock = res.rows[0]["Stock"];
 
     if (currentStock < qty) {
       console.warn(`Insufficient stock for SKU ${sku}`);
@@ -95,13 +116,20 @@ async function decrementStock(sku, qty) {
 
     // Decrement stock
     await client.query(
-      "UPDATE products SET stock = stock - $1, \"UpdatedAt\" = NOW() WHERE sku = $2",
+      "UPDATE \"Products\" SET \"Stock\" = \"Stock\" - $1, \"UpdatedAt\" = NOW() WHERE \"Sku\" = $2",
       [qty, sku]
     );
 
     await client.query("COMMIT");
     const newStock = currentStock - qty;
     console.log(`Decremented ${qty} of ${sku}. New stock: ${newStock}`);
+    
+    // Broadcast stock update to all connected clients
+    broadcastToClients({
+      type: 'stockUpdated',
+      sku: sku,
+      stock: newStock
+    });
     
     // Notify SignalR hub about stock update
     try {

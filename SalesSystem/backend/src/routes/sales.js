@@ -8,7 +8,7 @@ const WebSocket = require("ws");
 
 // Inventory system config
 const INVENTORY_API_BASE = "http://localhost:5099/api/products"; // Inventory API
-const INVENTORY_WS_URL = "ws://localhost:8080"; // Inventory WebSocket
+const INVENTORY_WS_URL = "ws://localhost:8081"; // Inventory WebSocket
 let ws;
 
 // Connect to Inventory WebSocket
@@ -85,11 +85,13 @@ router.get("/stats", auth, async (req, res) => {
 router.get("/recent", auth, async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT s.id, s.user_id, u.name AS cashier, s.total, s.created_at
-       FROM sales s
+      `SELECT si.id, si.product_sku, si.product_name, si.quantity, si.unit_price, 
+              s.id as sale_id, s.created_at, u.name AS cashier
+       FROM sale_items si
+       JOIN sales s ON s.id = si.sale_id
        JOIN users u ON u.id = s.user_id
        ORDER BY s.created_at DESC
-       LIMIT 5`
+       LIMIT 10`
     );
 
     return res.json(rows);
@@ -134,6 +136,26 @@ router.get("/embedded/stats", async (req, res) => {
     }));
 
     return res.json(normalized);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// GET /api/sales/embedded/summary - total sales and revenue for embedded frontend (no auth required)
+router.get("/embedded/summary", async (req, res) => {
+  try {
+    const [summaryRows] = await pool.query(
+      `SELECT COUNT(DISTINCT s.id) as total_sales, SUM(s.total) as total_revenue
+       FROM sales s`
+    );
+
+    const summary = summaryRows[0] || { total_sales: 0, total_revenue: 0 };
+    
+    return res.json({
+      total_sales: Number(summary.total_sales || 0),
+      total_revenue: Number(summary.total_revenue || 0)
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });
@@ -194,6 +216,7 @@ router.post("/", auth, async (req, res) => {
       saleTotal += lineTotal;
       saleItemsToInsert.push({
         product_sku: product.sku,
+        product_name: product.name,
         quantity,
         unit_price: product.price,
       });
@@ -206,19 +229,26 @@ router.post("/", auth, async (req, res) => {
     );
     const saleId = saleResult.insertId;
 
-    // Insert sale items
+    // Insert sale items with product name from inventory
     for (const si of saleItemsToInsert) {
       await conn.query(
-        "INSERT INTO sale_items (sale_id, product_sku, quantity, unit_price) VALUES (?, ?, ?, ?)",
-        [saleId, si.product_sku, si.quantity, si.unit_price]
+        "INSERT INTO sale_items (sale_id, product_sku, product_name, quantity, unit_price) VALUES (?, ?, ?, ?, ?)",
+        [saleId, si.product_sku, si.product_name, si.quantity, si.unit_price]
       );
     }
 
     await conn.commit();
 
     // Send sale info to Inventory WS to decrement stock
+    const wsMessage = { saleId, items: saleItemsToInsert };
+    console.log('Attempting to send to WebSocket:', wsMessage);
+    
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ saleId, items: saleItemsToInsert }));
+      ws.send(JSON.stringify(wsMessage));
+      console.log('✅ Stock update sent to inventory system');
+    } else {
+      console.warn('⚠️ WebSocket not connected. Stock not updated in inventory.');
+      console.warn('WebSocket state:', ws ? ws.readyState : 'null');
     }
 
     return res.status(201).json({

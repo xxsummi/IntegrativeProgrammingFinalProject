@@ -29,10 +29,21 @@ useEffect(() => {
   
   const handleMessage = (data) => {
     console.log('Received real-time update:', data);
-    if (data.status === 'success') {
+    if (data.type === 'stockUpdated') {
+      // Update the product stock locally
+      setProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.sku === data.sku ? { ...p, stock: data.stock } : p
+        )
+      );
+      // Also refresh stats to show new sales
+      fetchStats();
+      fetchRecentSales();
+    } else if (data.status === 'success') {
       // Refresh products when inventory is updated
       fetchProducts();
       fetchStats();
+      fetchRecentSales();
     }
   };
 
@@ -92,17 +103,7 @@ const fetchRecentSales = async () => {
   try {
     setRecentSalesLoading(true);
     const data = await apiService.getRecentSales();
-
-    const merged = data.map(sale => {
-      const product = (Array.isArray(products) ? products : []).find(p => p.sku === sale.product_sku);
-      return {
-        ...sale,
-        product_name: product ? product.name : sale.product_sku,
-        unit_price: product ? Number(product.price || product.unit_price || 0) : 0
-      };
-    });
-
-    setRecentSales(merged);
+    setRecentSales(data || []);
     setRecentSalesError('');
   } catch (err) {
     console.error('Error fetching recent sales:', err);

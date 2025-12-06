@@ -25,7 +25,7 @@ Write-Host "- Embedded POS: http://localhost:5173/embedded-sales" -ForegroundCol
 Write-Host "`nInventory System:" -ForegroundColor White
 Write-Host "- Backend API: http://localhost:5099" -ForegroundColor White
 Write-Host "- Frontend: http://localhost:8080" -ForegroundColor White
-Write-Host "`nWebSocket: ws://localhost:8080" -ForegroundColor White
+Write-Host "`nWebSocket Server: ws://localhost:8081" -ForegroundColor White
 Write-Host "========================================" -ForegroundColor Cyan
 
 Read-Host "`nPress Enter to continue"

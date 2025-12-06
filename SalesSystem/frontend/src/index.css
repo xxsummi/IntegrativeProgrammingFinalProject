@@ -30,14 +30,8 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #2c3e50, #3498db);
-  background: url('./assets/coffe.jpg');
-  background-size: cover;
-  background-position: center;
+  width: 100%;
 }
 
 h1 {

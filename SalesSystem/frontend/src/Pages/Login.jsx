@@ -28,7 +28,7 @@ const Login = ({ onLoginSuccess }) => {
       // Call the login success callback after a delay
       setTimeout(() => {
         if (onLoginSuccess) {
-          onLoginSuccess();
+          onLoginSuccess(response.user);
         }
         console.log('User logged in:', response.user);
       }, 2000);

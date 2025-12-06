@@ -237,16 +237,21 @@
 }
 
 .action-btn {
-  width: 36px;
-  height: 36px;
+  padding: 8px 16px;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
   transition: all 0.3s ease;
+}
+
+.action-btn svg {
+  font-size: 1.1rem;
 }
 
 .action-btn.edit {

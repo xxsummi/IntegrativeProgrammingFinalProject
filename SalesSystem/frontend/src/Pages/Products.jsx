@@ -255,14 +255,14 @@ const Products = () => {
                       onClick={() => handleEdit(product)}
                       title="Edit Product"
                     >
-                      <MdEdit />
+                      <MdEdit /> <span>Edit</span>
                     </button>
                     <button 
                       className="action-btn delete"
                       onClick={() => handleDelete(product.sku)}
                       title="Delete Product"
                     >
-                      <MdDelete />
+                      <MdDelete /> <span>Delete</span>
                     </button>
                   </td>
                 </tr>

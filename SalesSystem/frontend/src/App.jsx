@@ -5,6 +5,7 @@ import Login from './Pages/Login'
 import Products from './Pages/Products'
 import Sales from './Pages/Sales'
 import EmbeddedSales from './Pages/EmbeddedSales'
+import Shop from './Pages/Shop'
 import apiService from './services/api';
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
     const path = window.location.pathname;
     if (path.includes('products')) return 'products';
     if (path.includes('embedded-sales')) return 'embedded-sales';
+    if (path.includes('shop')) return 'shop';
     return 'sales';
   });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -30,6 +32,7 @@ function App() {
       const path = window.location.pathname;
       if (path.includes('products')) setCurrentPage('products');
       else if (path.includes('embedded-sales')) setCurrentPage('embedded-sales');
+      else if (path.includes('shop')) setCurrentPage('shop');
       else setCurrentPage('sales');
     };
     
@@ -37,11 +40,14 @@ function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = (userData) => {
     setIsLoggedIn(true);
-    setUser(apiService.getCurrentUser());
-    setCurrentPage('sales');
-    window.history.pushState({}, '', '/sales');
+    setUser(userData || apiService.getCurrentUser());
+    
+    // Redirect based on role
+    const page = userData?.role === 'customer' ? 'shop' : 'sales';
+    setCurrentPage(page);
+    window.history.pushState({}, '', `/${page}`);
   };
 
   const handleLogout = () => {
@@ -68,6 +74,29 @@ function App() {
           </div>
           <Login onLoginSuccess={handleLoginSuccess} />
         </div>
+      </div>
+    );
+  }
+
+  // Customer view - shop only
+  if (user?.role === 'customer') {
+    return (
+      <div className="app customer-app">
+        <header className="customer-header">
+          <div className="brand">
+            <PiCoffeeFill className="brand-icon" />
+            <span>Don Macchiato</span>
+          </div>
+          <div className="customer-actions">
+            <span>Welcome, {user.name}</span>
+            <button className="logout-btn" onClick={handleLogout}>
+              <PiSignOut /> Logout
+            </button>
+          </div>
+        </header>
+        <main className="customer-content">
+          <Shop />
+        </main>
       </div>
     );
   }
