@@ -164,6 +164,13 @@
   gap: 12px;
 }
 
+.cart-quantity {
+  min-width: 20px;
+  text-align: center;
+  color: #000; /* make sure it’s visible */
+  font-weight: bold;
+}
+
 .cart-item-controls button {
   background: var(--coffee-light);
   border: 2px solid var(--coffee-accent);

@@ -11,7 +11,6 @@ const Shop = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Check if user is authenticated
     const token = localStorage.getItem('token');
     if (token) {
       setIsAuthenticated(true);
@@ -24,7 +23,7 @@ const Shop = () => {
   const fetchProducts = async () => {
     try {
       const data = await apiService.getProducts();
-      setProducts(data);
+      setProducts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to fetch products:', err);
     } finally {
@@ -33,42 +32,73 @@ const Shop = () => {
   };
 
   const addToCart = (product) => {
-    const existing = cart.find(item => item.sku === product.sku);
+    const existing = cart.find(item => item.id === product.id);
+
     if (existing) {
-      setCart(cart.map(item => 
-        item.sku === product.sku ? { ...item, quantity: item.quantity + 1 } : item
+      if (existing.quantity >= product.stock) {
+        alert(`Only ${product.stock} stocks available`);
+        return;
+      }
+      setCart(cart.map(item =>
+        item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
       ));
+      alert(`${product.name} quantity increased in cart`);
     } else {
+      if (product.stock === 0) {
+        alert('Product out of stock');
+        return;
+      }
       setCart([...cart, { ...product, quantity: 1 }]);
+      alert(`${product.name} added to cart`);
     }
   };
 
-  const updateQuantity = (sku, quantity) => {
+  const updateQuantity = (id, quantity) => {
     if (quantity <= 0) {
-      setCart(cart.filter(item => item.sku !== sku));
+      setCart(cart.filter(item => item.id !== id));
     } else {
-      setCart(cart.map(item => item.sku === sku ? { ...item, quantity } : item));
+      setCart(cart.map(item => item.id === id ? { ...item, quantity } : item));
     }
   };
 
   const handleCheckout = async () => {
     try {
+      if (!cart.length) return alert("Cart is empty!");
+
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!user?.id) return alert("User not found. Please login again.");
+
       const items = cart.map(item => ({
-        product_sku: item.sku,
+        sku: item.sku,
         quantity: item.quantity
       }));
 
-      await apiService.createSale({ items });
-      alert('Order placed successfully!');
+      // Call backend API to create sale
+      const response = await apiService.createSale({ items });
+
+      alert(`Order placed successfully! Total: ₱${response.total.toFixed(2)}`);
+
+      // 🔹 Update stock locally
+      setProducts(prevProducts => prevProducts.map(prod => {
+        const purchased = items.find(i => i.sku === prod.sku);
+        if (purchased) {
+          return { ...prod, stock: prod.stock - purchased.quantity };
+        }
+        return prod;
+      }));
+
       setCart([]);
       setShowCheckout(false);
-      fetchProducts();
+
     } catch (err) {
-      alert(err.message || 'Failed to place order');
+      console.error("Checkout error:", err);
+      alert(err.message || "Failed to place order");
     }
   };
 
-  const total = cart.reduce((sum, item) => sum + (item.price || item.unit_price) * item.quantity, 0);
+
+
+  const total = cart.reduce((sum, item) => sum + (item.price || item.unit_price || 0) * item.quantity, 0);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -78,7 +108,6 @@ const Shop = () => {
 
   if (loading) return <div className="shop-loading">Loading products...</div>;
 
-  // Show login screen if not authenticated
   if (!isAuthenticated) {
     return (
       <div className="shop-container">
@@ -101,29 +130,16 @@ const Shop = () => {
           <button className="cart-btn" onClick={() => setShowCheckout(true)}>
             <PiShoppingCartSimple /> Cart ({cart.length})
           </button>
-          {/* <button 
-            onClick={handleLogout}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#ff6b6b',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            Logout
-          </button> */}
         </div>
       </div>
 
       <div className="products-grid">
         {products.map(product => (
-          <div key={product.sku} className="product-card">
+          <div key={product.id} className="product-card">
             <h3>{product.name}</h3>
             <p className="product-price">₱{(product.price || product.unit_price).toFixed(2)}</p>
             <p className="product-stock">Stock: {product.stock}</p>
-            <button 
+            <button
               onClick={() => addToCart(product)}
               disabled={product.stock === 0}
               className="add-to-cart-btn"
@@ -143,13 +159,24 @@ const Shop = () => {
             ) : (
               <>
                 {cart.map(item => (
-                  <div key={item.sku} className="cart-item">
+                  <div key={item.id} className="cart-item">
                     <span>{item.name}</span>
                     <div className="cart-item-controls">
-                      <button onClick={() => updateQuantity(item.sku, item.quantity - 1)}>-</button>
-                      <span>{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.sku, item.quantity + 1)}>+</button>
-                      <span>₱{((item.price || item.unit_price) * item.quantity).toFixed(2)}</span>
+                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)}>-</button>
+                      <span className="cart-quantity">{item.quantity}</span>
+                      <button
+                        onClick={() => {
+                          if (item.quantity + 1 > item.stock) {
+                            alert(`Only ${item.stock} stocks available`);
+                          } else {
+                            updateQuantity(item.id, item.quantity + 1)
+                          }
+                        }}
+                      >
+                        +
+                      </button>
+
+                      <span className="cart-quantity">₱{((item.price || item.unit_price || 0) * item.quantity).toFixed(2)}</span>
                     </div>
                   </div>
                 ))}

@@ -79,3 +79,9 @@
 .sales-table tbody tr:hover {
   background: #f8fafc;
 }
+
+.pagination-btn {
+    margin-top: 20px;
+    background: var(--coffee-primary);
+    color: white;
+}

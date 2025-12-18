@@ -7,300 +7,218 @@ const axios = require("axios");
 const WebSocket = require("ws");
 
 // Inventory system config
-const INVENTORY_API_BASE = "http://localhost:5099/api/products"; // Inventory API
-const INVENTORY_WS_URL = "ws://localhost:8081"; // Inventory WebSocket
+const INVENTORY_API_BASE = "http://localhost:5099/api/products";
+const INVENTORY_WS_URL = "ws://localhost:8081";
 let ws;
 
-// Connect to Inventory WebSocket
+/* =======================
+   WebSocket connection
+======================= */
 function connectWS() {
-  const wsUrl = `${INVENTORY_WS_URL}?token=sales-system-token`;
-  ws = new WebSocket(wsUrl);
+  ws = new WebSocket(`${INVENTORY_WS_URL}?token=sales-system-token`);
 
-  ws.on("open", () => {
-    console.log("Connected to Inventory WebSocket server");
-  });
-
-  ws.on("message", (message) => {
-    console.log("Message from Inventory WS:", message.toString());
-  });
-
-  ws.on("close", (code, reason) => {
-    console.log(`Inventory WS connection closed. Code: ${code}, Reason: ${reason}`);
-    if (code !== 1008) { // Don't reconnect if unauthorized
-      console.log("Reconnecting in 3s...");
-      setTimeout(connectWS, 3000);
-    }
-  });
-
-  ws.on("error", (err) => {
-    console.error("Inventory WS error:", err);
-    ws.close();
-  });
+  ws.on("open", () => console.log("Connected to Inventory WebSocket"));
+  ws.on("close", () => setTimeout(connectWS, 3000));
+  ws.on("error", err => console.error("Inventory WS error:", err));
 }
 
-// Initialize WebSocket connection
 connectWS();
 
+/* =======================
+   ROUTES
+======================= */
 
-// ---------------------- ROUTES ----------------------
-
-//GET /api/sales/products - fetch products from Inventory
+// GET /api/sales/products (from Inventory)
 router.get("/products", auth, async (req, res) => {
   try {
     const response = await axios.get(INVENTORY_API_BASE);
-    // Extract products array from inventory response
-    const products = response.data.products || [];
-    return res.json(products);
+    res.json(response.data.products || []);
   } catch (err) {
-    console.error("Failed to fetch products from Inventory:", err.message);
-    return res.status(500).json({ message: "Failed to fetch products" });
+    res.status(500).json({ message: "Failed to fetch products" });
   }
 });
 
-//GET /api/sales/stats
+// GET /api/sales/stats
 router.get("/stats", auth, async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `SELECT si.product_sku, p.name AS product_name, SUM(si.quantity) AS total_quantity
-       FROM sale_items si
-       JOIN products p ON p.sku = si.product_sku
-       GROUP BY si.product_sku, p.name
-       ORDER BY total_quantity DESC`
-    );
+    const [rows] = await pool.query(`
+      SELECT product_name, SUM(quantity) AS total_quantity
+      FROM sale_items
+      GROUP BY product_name
+      ORDER BY total_quantity DESC
+    `);
 
-    const normalized = rows.map((r) => ({
-      product_sku: r.product_sku,
+    res.json(rows.map(r => ({
       product_name: r.product_name,
-      total_quantity: Number(r.total_quantity || 0),
-    }));
-
-    return res.json(normalized);
+      total_quantity: Number(r.total_quantity)
+    })));
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-//GET /api/sales/recent
+// GET /api/sales/recent
 router.get("/recent", auth, async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `SELECT si.id, si.product_sku, si.product_name, si.quantity, si.unit_price, 
-              s.id as sale_id, s.created_at, u.name AS cashier
-       FROM sale_items si
-       JOIN sales s ON s.id = si.sale_id
-       JOIN users u ON u.id = s.user_id
-       ORDER BY s.created_at DESC
-       LIMIT 10`
-    );
+    const [rows] = await pool.query(`
+      SELECT
+        si.id,
+        si.product_name,
+        si.quantity,
+        si.unit_price,
+        s.id AS sale_id,
+        s.created_at,
+        u.name AS cashier
+      FROM sale_items si
+      JOIN sales s ON s.id = si.sale_id
+      JOIN users u ON u.id = s.user_id
+      ORDER BY s.created_at DESC
+      LIMIT 10
+    `);
 
-    return res.json(rows);
-  } catch (err) {
-    console.error("Error fetching recent sales:", err);
-    return res.status(500).json({ message: "Server error" });
-  }
-});
-
-// GET /api/sales/embedded - for embedded frontend (no auth required)
-router.get("/embedded", async (req, res) => {
-  try {
-    const [rows] = await pool.query(
-      `SELECT s.id, s.user_id, u.name AS cashier, s.total, s.created_at
-       FROM sales s
-       JOIN users u ON u.id = s.user_id
-       ORDER BY s.created_at DESC
-       LIMIT 100`
-    );
     res.json(rows);
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-// GET /api/sales/embedded/stats - for embedded frontend (no auth required)
+// GET /api/sales/embedded
+router.get("/embedded", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT s.id, u.name AS cashier, s.total, s.created_at
+      FROM sales s
+      JOIN users u ON u.id = s.user_id
+      ORDER BY s.created_at DESC
+      LIMIT 100
+    `);
+
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// GET /api/sales/embedded/stats
 router.get("/embedded/stats", async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `SELECT si.product_sku, p.name AS product_name, SUM(si.quantity) AS total_quantity
-       FROM sale_items si
-       JOIN products p ON p.sku = si.product_sku
-       GROUP BY si.product_sku, p.name
-       ORDER BY total_quantity DESC`
-    );
+    const [rows] = await pool.query(`
+      SELECT SUM(quantity) AS total_quantity
+      FROM sale_items
+    `);
 
-    const normalized = rows.map((r) => ({
-      product_sku: r.product_sku,
-      product_name: r.product_name,
-      total_quantity: Number(r.total_quantity || 0),
-    }));
-
-    return res.json(normalized);
+    res.json(rows);
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-// GET /api/sales/embedded/summary - total sales and revenue for embedded frontend (no auth required)
+// GET /api/sales/embedded/summary
 router.get("/embedded/summary", async (req, res) => {
   try {
-    const [summaryRows] = await pool.query(
-      `SELECT COUNT(DISTINCT s.id) as total_sales, SUM(s.total) as total_revenue
-       FROM sales s`
-    );
+    const [[summary]] = await pool.query(`
+      SELECT COUNT(*) AS total_sales, SUM(total) AS total_revenue
+      FROM sales
+    `);
 
-    const summary = summaryRows[0] || { total_sales: 0, total_revenue: 0 };
-    
-    return res.json({
+    res.json({
       total_sales: Number(summary.total_sales || 0),
       total_revenue: Number(summary.total_revenue || 0)
     });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-//GET /api/sales (admin/manager only)
-router.get("/", auth, async (req, res) => {
-  if (req.user.role !== "admin" && req.user.role !== "manager") {
-    return res.status(403).json({ message: "Forbidden" });
-  }
-
-  try {
-    const [rows] = await pool.query(
-      `SELECT s.id, s.user_id, u.name AS cashier, s.total, s.created_at
-       FROM sales s
-       JOIN users u ON u.id = s.user_id
-       ORDER BY s.created_at DESC
-       LIMIT 100`
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Server error" });
-  }
-});
-
-//POST /api/sales - create a sale and notify Inventory
+// POST /api/sales
 router.post("/", auth, async (req, res) => {
   const { items } = req.body;
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ message: "Items are required" });
-  }
+  if (!Array.isArray(items) || items.length === 0)
+    return res.status(400).json({ message: "Items required" });
 
-  let conn;
+  const conn = await pool.getConnection();
+
   try {
-    conn = await pool.getConnection();
     await conn.beginTransaction();
 
     let saleTotal = 0;
-    const saleItemsToInsert = [];
+    const saleItems = [];
 
-    // Validate stock and compute totals via Inventory API
     for (const item of items) {
-      const { product_sku, quantity } = item;
-      if (!product_sku || !Number.isInteger(quantity) || quantity <= 0) {
-        throw new Error("Invalid item payload");
-      }
+      const { sku, quantity } = item;
 
-      // Fetch product info from Inventory
-      const inventoryResponse = await axios.get(`${INVENTORY_API_BASE}/${encodeURIComponent(product_sku)}`);
-      const product = inventoryResponse.data;
+      const { data: product } = await axios.get(`${INVENTORY_API_BASE}/${sku}`);
 
-      if (!product) throw new Error(`Product not found: ${product_sku}`);
-      if (product.stock < quantity) throw new Error(`Insufficient stock for ${product_sku}`);
+      if (product.stock < quantity)
+        throw new Error(`Insufficient stock for ${product.name}`);
 
-      const lineTotal = Number(product.price) * quantity;
-      saleTotal += lineTotal;
-      saleItemsToInsert.push({
-        product_sku: product.sku,
+      saleTotal += product.price * quantity;
+
+
+
+      saleItems.push({
         product_name: product.name,
         quantity,
-        unit_price: product.price,
+        unit_price: product.price
       });
     }
 
-    // Insert sale
     const [saleResult] = await conn.query(
       "INSERT INTO sales (user_id, total) VALUES (?, ?)",
       [req.user.id, saleTotal]
     );
-    const saleId = saleResult.insertId;
 
-    // Insert sale items with product name from inventory
-    for (const si of saleItemsToInsert) {
+    for (const item of saleItems) {
       await conn.query(
-        "INSERT INTO sale_items (sale_id, product_sku, product_name, quantity, unit_price) VALUES (?, ?, ?, ?, ?)",
-        [saleId, si.product_sku, si.product_name, si.quantity, si.unit_price]
+        `INSERT INTO sale_items (sale_id, product_name, quantity, unit_price)
+         VALUES (?, ?, ?, ?)`,
+        [saleResult.insertId, item.product_name, item.quantity, item.unit_price]
       );
+    }
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        items: items.map(i => ({
+          product_sku: i.sku,  // must match inventory WS
+          quantity: i.quantity
+        }))
+      }));
     }
 
     await conn.commit();
 
-    // Send sale info to Inventory WS to decrement stock
-    const wsMessage = { saleId, items: saleItemsToInsert };
-    console.log('Attempting to send to WebSocket:', wsMessage);
-    
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(wsMessage));
-      console.log('✅ Stock update sent to inventory system');
-    } else {
-      console.warn('⚠️ WebSocket not connected. Stock not updated in inventory.');
-      console.warn('WebSocket state:', ws ? ws.readyState : 'null');
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ saleId: saleResult.insertId, items }));
     }
 
-    return res.status(201).json({
-      id: saleId,
-      user_id: req.user.id,
-      total: saleTotal,
-      items: saleItemsToInsert,
-      created_at: new Date().toISOString(),
-    });
+    res.status(201).json({ id: saleResult.insertId, total: saleTotal });
   } catch (err) {
-    if (conn) await conn.rollback();
-    const message = err?.message || "Failed to create sale";
-    return res.status(400).json({ message });
+    await conn.rollback();
+    res.status(400).json({ message: err.message });
   } finally {
-    if (conn) conn.release();
+    conn.release();
   }
 });
 
-//GET /api/sales/:id
+// GET /api/sales/:id
 router.get("/:id", auth, async (req, res) => {
   const { id } = req.params;
-  try {
-    const [salesRows] = await pool.query(
-      `SELECT s.id, s.user_id, u.name AS cashier, s.total, s.created_at
-       FROM sales s
-       JOIN users u ON u.id = s.user_id
-       WHERE s.id = ?`,
-      [id]
-    );
-    if (salesRows.length === 0)
-      return res.status(404).json({ message: "Sale not found" });
 
-    const sale = salesRows[0];
+  const [[sale]] = await pool.query(`
+    SELECT s.id, u.name AS cashier, s.total, s.created_at
+    FROM sales s
+    JOIN users u ON u.id = s.user_id
+    WHERE s.id = ?
+  `, [id]);
 
-    if (!(req.user.role === "admin" || req.user.id === sale.user_id)) {
-      return res.status(403).json({ message: "Forbidden" });
-    }
+  if (!sale) return res.status(404).json({ message: "Sale not found" });
 
-    const [itemRows] = await pool.query(
-      `SELECT si.id, si.product_sku, p.name AS product_name, si.quantity, si.unit_price
-       FROM sale_items si
-       JOIN products p ON p.sku = si.product_sku
-       WHERE si.sale_id = ?
-       ORDER BY si.id ASC`,
-      [id]
-    );
+  const [items] = await pool.query(`
+    SELECT id, product_name, quantity, unit_price
+    FROM sale_items
+    WHERE sale_id = ?
+  `, [id]);
 
-    return res.json({ ...sale, items: itemRows });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Server error" });
-  }
+  res.json({ ...sale, items });
 });
 
 module.exports = router;

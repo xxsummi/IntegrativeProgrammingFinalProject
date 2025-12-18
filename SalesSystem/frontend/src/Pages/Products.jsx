@@ -22,27 +22,30 @@ const Products = () => {
     stock: ''
   });
 
+  // ✅ Search state
+  const [searchTerm, setSearchTerm] = useState('');
+
   useEffect(() => {
     fetchProducts();
-    
+
     // Connect to SignalR for real-time updates
     signalRService.connect();
-    
+
     // Listen for inventory updates
     signalRService.on('StockUpdated', (data) => {
-      setProducts(prev => prev.map(p => 
+      setProducts(prev => prev.map(p =>
         p.sku === data.sku ? { ...p, stock: data.stock } : p
       ));
     });
-    
+
     signalRService.on('ProductAdded', () => {
       fetchProducts();
     });
-    
+
     signalRService.on('ProductDeleted', () => {
       fetchProducts();
     });
-    
+
     return () => {
       signalRService.disconnect();
     };
@@ -78,51 +81,49 @@ const Products = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        id: editingProduct ? editingProduct.id : undefined,
+        sku: formData.sku.trim(),
+        name: formData.name.trim(),
+        description: formData.description.trim() || 'No Description',
+        price: parseFloat(formData.unit_price) || 0,
+        stock: parseInt(formData.stock, 10) || 0
+      };
+
       if (editingProduct) {
-        // Update existing product (may create a sale on stock decrease)
-        const payload = {
-          id: editingProduct.id,
-          sku: formData.sku,
-          name: formData.name,
-          description: formData.description || '',
-          price: parseFloat(formData.unit_price),
-          stock: parseInt(formData.stock, 10)
-        };
         if (!apiService.isAuthenticated()) {
-          alert('You must be logged in to update products. Please login and try again.');
+          alert('You must be logged in to update products.');
           return;
         }
 
         const res = await apiService.updateProduct(editingProduct.id, payload);
-        if (res && res.sale) {
-          alert(`Stock reduced by ${res.sale.quantity}. Sale recorded (id: ${res.sale.id}).`);
-        } else if (res && res.product) {
-          alert('Product updated');
-        } else {
-          alert('Product updated (no additional info)');
-        }
-        setShowAddForm(false);
-        setFormData({ sku: '', name: '', unit_price: '', stock: '' });
+        alert('Product updated successfully!');
         setEditingProduct(null);
-        fetchProducts(); // Refresh the list
-        // optionally refresh sales/stats page if you have it visible
       } else {
-        // Create new product - backend endpoint missing
-        alert('Product added successfully! (Backend endpoint needed)');
-        setShowAddForm(false);
-        setFormData({ sku: '', name: '', unit_price: '', stock: '' });
-        fetchProducts(); // Refresh the list
+        if (!apiService.isAuthenticated()) {
+          alert('You must be logged in to add products.');
+          return;
+        }
+
+        const newProduct = await apiService.addProduct(payload);
+        alert(`Product "${newProduct.name}" added successfully!`);
       }
+
+      setShowAddForm(false);
+      setFormData({ sku: '', name: '', unit_price: '', stock: '' });
+      fetchProducts();
     } catch (err) {
       console.error('Product save failed:', err);
-      const message = err && err.message ? err.message : 'Failed to save product';
-      alert(message);
+      alert(err?.message || 'Failed to save product');
     }
   };
+
+
 
   const handleEdit = (product) => {
     setEditingProduct(product);
     setFormData({
+      id: product.id,
       sku: product.sku,
       name: product.name,
       description: product.description || '',
@@ -132,17 +133,34 @@ const Products = () => {
     setShowAddForm(true);
   };
 
-  const handleDelete = async (sku) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
-        // This would need a backend endpoint for deleting products
-        alert('Product deleted! (Backend endpoint needed)');
-        fetchProducts(); // Refresh the list
+        if (!apiService.isAuthenticated()) {
+          alert('You must be logged in to delete products.');
+          return;
+        }
+
+        await apiService.deleteProduct(id);
+        alert('Product deleted successfully!');
+        fetchProducts(); // Refresh list
       } catch (err) {
+        console.error(err);
         alert('Failed to delete product');
       }
     }
   };
+
+
+  // ✅ Filter products based on search
+  const filteredProducts = products.filter((product) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      product.name?.toLowerCase().includes(term) ||
+      product.sku?.toLowerCase().includes(term) ||
+      product.description?.toLowerCase().includes(term)
+    );
+  });
 
   if (loading) {
     return (
@@ -188,14 +206,17 @@ const Products = () => {
       {/* Action Bar */}
       <div className="action-bar">
         <div className="search-section">
-          <input 
-            type="text" 
-            placeholder="Search products..." 
+          {/* ✅ Search input */}
+          <input
+            type="text"
+            placeholder="Search products..."
             className="search-input"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <div className="action-buttons">
-          <button 
+          <button
             className="add-product-btn"
             onClick={() => {
               setShowAddForm(true);
@@ -216,7 +237,7 @@ const Products = () => {
 
       {/* Products Table */}
       <div className="products-table-container">
-        {products.length === 0 ? (
+        {filteredProducts.length === 0 ? (
           <div className="no-products">
             <PiCoffeeFill className="no-products-icon" />
             <h3>No products available</h3>
@@ -235,7 +256,7 @@ const Products = () => {
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => (
+              {filteredProducts.map((product) => (
                 <tr key={product.sku} className="product-row">
                   <td className="product-info">
                     <div className="product-name">{product.name}</div>
@@ -250,16 +271,16 @@ const Products = () => {
                     </span>
                   </td>
                   <td className="product-actions">
-                    <button 
+                    <button
                       className="action-btn edit"
                       onClick={() => handleEdit(product)}
                       title="Edit Product"
                     >
                       <MdEdit /> <span>Edit</span>
                     </button>
-                    <button 
+                    <button
                       className="action-btn delete"
-                      onClick={() => handleDelete(product.sku)}
+                      onClick={() => handleDelete(product.id)}
                       title="Delete Product"
                     >
                       <MdDelete /> <span>Delete</span>
@@ -278,7 +299,7 @@ const Products = () => {
           <div className="modal">
             <div className="modal-header">
               <h2>{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
-              <button 
+              <button
                 className="close-btn"
                 onClick={() => setShowAddForm(false)}
               >
@@ -296,6 +317,17 @@ const Products = () => {
                     onChange={handleInputChange}
                     required
                     placeholder="e.g., Caramel Macchiato"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Description</label>
+                  <input
+                    type="text"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="e.g., Has Caramel"
                   />
                 </div>
                 <div className="form-group">

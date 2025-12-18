@@ -76,7 +76,7 @@ class ApiService {
     try {
       const response = await fetch(`http://localhost:5099/api/products/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(true), // include token
         body: JSON.stringify(productData),
       });
       const data = await this.parseResponse(response);
@@ -84,6 +84,39 @@ class ApiService {
       return data;
     } catch (err) {
       console.error('Update product error:', err);
+      throw err;
+    }
+  }
+
+  async addProduct(productData) {
+    try {
+      const response = await fetch(`http://localhost:5099/api/products`, {
+        method: 'POST',
+        headers: this.getHeaders(true),
+        body: JSON.stringify(productData),
+      });
+
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : {};
+      if (!response.ok) throw new Error(data.message || 'Failed to add product');
+      return data;
+    } catch (err) {
+      console.error('Add product error:', err);
+      throw err;
+    }
+  }
+
+  async deleteProduct(id) {
+    try {
+      const response = await fetch(`http://localhost:5099/api/products/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await this.parseResponse(response);
+      if (!response.ok) throw new Error(data.message || 'Failed to delete product');
+      return data;
+    } catch (err) {
+      console.error('Delete product error:', err);
       throw err;
     }
   }
