@@ -5,7 +5,7 @@ describe('Sales flow', () => {
     // If app requires login, you can programmatically set localStorage token
     cy.window().then((win) => {
       win.localStorage.setItem('token', 'fake-token');
-      win.localStorage.setItem('user', JSON.stringify({ id: 1, name: 'Test', role: 'cashier' }));
+      win.localStorage.setItem('user', JSON.stringify({ id: 1, name: 'Test', role: 'customer' }));
     });
 
     // Reload so app picks up localStorage

@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 // Create a helper test token (make sure TEST_JWT_SECRET is set or fallback to JWT_SECRET)
 const JWT_SECRET = process.env.TEST_JWT_SECRET || process.env.JWT_SECRET || 'testsecret';
 
-function makeTestToken(payload = { id: 1, role: 'cashier', name: 'Test' }) {
+function makeTestToken(payload = { id: 1, role: 'customer', name: 'Test' }) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 }
 

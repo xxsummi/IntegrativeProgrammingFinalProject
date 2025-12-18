@@ -90,7 +90,7 @@ function App() {
           <thead style={styles.thead}>
             <tr>
               <th style={styles.th}>ID</th>
-              <th style={styles.th}>Cashier</th>
+              <th style={styles.th}>Customer</th>
               <th style={styles.th}>Total</th>
               <th style={styles.th}>Date</th>
             </tr>
@@ -99,7 +99,7 @@ function App() {
             {sales.map((sale) => (
               <tr key={sale.id}>
                 <td style={styles.td}>{sale.id}</td>
-                <td style={styles.td}>{sale.cashier || sale.user_id}</td>
+                <td style={styles.td}>{sale.customer || sale.user_id}</td>
                 <td style={styles.td}>₱{Number(sale.total || 0).toFixed(2)}</td>
                 <td style={styles.td}>{new Date(sale.created_at).toLocaleString()}</td>
               </tr>

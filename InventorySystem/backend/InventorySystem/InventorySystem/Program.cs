@@ -12,7 +12,7 @@ builder.Services.AddSignalR();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowVueApp", builder =>
-        builder.WithOrigins("http://localhost:8081", "http://localhost:5173", "http://localhost:8080")
+        builder.WithOrigins("http://localhost:8081", "http://localhost:5173", "http://localhost:8080", "https://localhost:7266")
                .AllowAnyHeader()
                .AllowAnyMethod()
                .AllowCredentials());
@@ -34,11 +34,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+app.UseCors("AllowVueApp");
+
+// Disable HTTPS redirection in development to avoid CORS issues
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthorization();
-
-app.UseCors("AllowVueApp");
 
 app.MapControllers();
 app.MapHub<InventoryHub>("/inventoryHub");

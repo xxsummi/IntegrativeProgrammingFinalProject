@@ -12,7 +12,7 @@ const pool = new Pool({
   port: 5432,
   database: "InventorySystem",
   user: "postgres",
-  password: "admin",
+  password: "password",
 });
 
 // Test database connection

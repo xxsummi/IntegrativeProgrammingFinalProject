@@ -86,7 +86,7 @@ const EmbeddedSales = () => {
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Cashier</th>
+                  <th>Customer</th>
                   <th>Total</th>
                   <th>Date</th>
                 </tr>

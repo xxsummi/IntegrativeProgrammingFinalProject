@@ -137,7 +137,7 @@
             <thead class="thead">
                 <tr>
                     <th class="th">ID</th>
-                    <th class="th">Cashier</th>
+                    <th class="th">Customer</th>
                     <th class="th">Total</th>
                     <th class="th">Date</th>
                 </tr>
@@ -223,7 +223,7 @@
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td class="td">${sale.id}</td>
-                    <td class="td">${sale.cashier || sale.user_id}</td>
+                    <td class="td">${sale.customer || sale.user_id}</td>
                     <td class="td">₱${Number(sale.total || 0).toFixed(2)}</td>
                     <td class="td">${new Date(sale.created_at).toLocaleString()}</td>
                 `;

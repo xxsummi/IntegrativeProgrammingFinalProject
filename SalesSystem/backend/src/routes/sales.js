@@ -68,7 +68,7 @@ router.get("/recent", auth, async (req, res) => {
         si.unit_price,
         s.id AS sale_id,
         s.created_at,
-        u.name AS cashier
+        u.name AS customer
       FROM sale_items si
       JOIN sales s ON s.id = si.sale_id
       JOIN users u ON u.id = s.user_id
@@ -86,7 +86,7 @@ router.get("/recent", auth, async (req, res) => {
 router.get("/embedded", async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT s.id, u.name AS cashier, s.total, s.created_at
+      SELECT s.id, u.name AS customer, s.total, s.created_at
       FROM sales s
       JOIN users u ON u.id = s.user_id
       ORDER BY s.created_at DESC
@@ -204,7 +204,7 @@ router.get("/:id", auth, async (req, res) => {
   const { id } = req.params;
 
   const [[sale]] = await pool.query(`
-    SELECT s.id, u.name AS cashier, s.total, s.created_at
+    SELECT s.id, u.name AS customer, s.total, s.created_at
     FROM sales s
     JOIN users u ON u.id = s.user_id
     WHERE s.id = ?

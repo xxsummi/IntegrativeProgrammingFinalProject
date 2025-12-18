@@ -17,7 +17,7 @@ echo.
 echo All Sales System servers started!
 echo - Backend: http://localhost:3000
 echo - Frontend: http://localhost:5173
-echo - WebSocket: ws://localhost:8080
+echo - WebSocket: ws://localhost:8081
 echo - Embedded Sales: http://localhost:5173/embedded-sales
 echo.
 pause
