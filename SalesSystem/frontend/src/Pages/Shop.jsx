@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PiShoppingCartSimple } from 'react-icons/pi';
 import apiService from '../services/api';
+import wsService from '../services/websocket';
 import './Shop.css';
 
 const Shop = () => {
@@ -15,9 +16,66 @@ const Shop = () => {
     if (token) {
       setIsAuthenticated(true);
       fetchProducts();
+      
+      // Connect to WebSocket for real-time inventory updates
+      wsService.connect();
+      
+      // Listen for inventory updates
+      wsService.on('productUpdated', (data) => {
+        const product = {
+          id: data.product.Id || data.product.id,
+          sku: data.product.Sku || data.product.sku,
+          name: data.product.Name || data.product.name,
+          description: data.product.Description || data.product.description,
+          price: data.product.Price || data.product.price || data.product.unit_price,
+          stock: data.product.Stock || data.product.stock
+        };
+        setProducts(prev => {
+          const updated = prev.map(p =>
+            p.sku === product.sku ? { ...p, ...product } : p
+          );
+          // If no product was updated, refresh the entire products list
+          const wasUpdated = updated.some((p, index) => p !== prev[index]);
+          if (!wasUpdated) {
+            fetchProducts(); // Refresh the entire list
+            return prev;
+          }
+          return updated;
+        });
+      });
+      
+      wsService.on('productAdded', () => {
+        fetchProducts(); // Refresh products list
+      });
+      
+      wsService.on('productDeleted', (data) => {
+        const productId = data.productId || data.ProductId;
+        setProducts(prev => prev.filter(p => p.id !== productId));
+        // Remove deleted product from cart if it exists
+        setCart(prev => prev.filter(item => item.id !== productId));
+      });
+      
+      wsService.on('stockUpdated', (data) => {
+        const sku = data.sku || data.Sku;
+        const stock = data.stock || data.Stock;
+        setProducts(prev => prev.map(p =>
+          p.sku === sku ? { ...p, stock: stock } : p
+        ));
+        // Update cart items if stock changed
+        setCart(prev => prev.map(item => {
+          if (item.sku === sku && item.quantity > stock) {
+            return { ...item, quantity: stock };
+          }
+          return item;
+        }).filter(item => item.quantity > 0));
+      });
     } else {
       setLoading(false);
     }
+    
+    return () => {
+      wsService.disconnect();
+    };
   }, []);
 
   const fetchProducts = async () => {

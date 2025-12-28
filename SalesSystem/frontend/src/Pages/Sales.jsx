@@ -43,6 +43,38 @@ const Sales = () => {
         fetchRecentSales();
       }
     };
+    
+    // Handle inventory updates from WebSocket
+    const handleProductUpdated = (data) => {
+      console.log('Product updated from inventory:', data);
+      const product = {
+        id: data.product.Id || data.product.id,
+        sku: data.product.Sku || data.product.sku,
+        name: data.product.Name || data.product.name,
+        description: data.product.Description || data.product.description,
+        price: data.product.Price || data.product.price || data.product.unit_price,
+        stock: data.product.Stock || data.product.stock
+      };
+      setProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.sku === product.sku ? { ...p, ...product } : p
+        )
+      );
+      fetchStats();
+    };
+    
+    const handleProductAdded = (data) => {
+      console.log('Product added from inventory:', data);
+      fetchProducts();
+      fetchStats();
+    };
+    
+    const handleProductDeleted = (data) => {
+      console.log('Product deleted from inventory:', data);
+      const productId = data.productId || data.ProductId;
+      setProducts(prevProducts => prevProducts.filter(p => p.id !== productId));
+      fetchStats();
+    };
 
     const handleConnected = () => {
       console.log('WebSocket connected - real-time updates enabled');
@@ -53,11 +85,19 @@ const Sales = () => {
     };
 
     websocketService.on('message', handleMessage);
+    websocketService.on('productUpdated', handleProductUpdated);
+    websocketService.on('productAdded', handleProductAdded);
+    websocketService.on('productDeleted', handleProductDeleted);
+    websocketService.on('stockUpdated', handleMessage); // Reuse existing handler
     websocketService.on('connected', handleConnected);
     websocketService.on('disconnected', handleDisconnected);
 
     return () => {
       websocketService.off('message', handleMessage);
+      websocketService.off('productUpdated', handleProductUpdated);
+      websocketService.off('productAdded', handleProductAdded);
+      websocketService.off('productDeleted', handleProductDeleted);
+      websocketService.off('stockUpdated', handleMessage);
       websocketService.off('connected', handleConnected);
       websocketService.off('disconnected', handleDisconnected);
       websocketService.disconnect();

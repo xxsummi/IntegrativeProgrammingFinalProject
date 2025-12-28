@@ -26,7 +26,24 @@ class WebSocketService {
         try {
           const data = JSON.parse(event.data);
           console.log('📨 Received WebSocket message:', data);
-          this.emit('message', data);
+          
+          // Handle different message types
+          switch(data.type) {
+            case 'stockUpdated':
+              this.emit('stockUpdated', data);
+              break;
+            case 'productAdded':
+              this.emit('productAdded', data);
+              break;
+            case 'productUpdated':
+              this.emit('productUpdated', data);
+              break;
+            case 'productDeleted':
+              this.emit('productDeleted', data);
+              break;
+            default:
+              this.emit('message', data);
+          }
         } catch (err) {
           console.error('Failed to parse WebSocket message:', err);
         }

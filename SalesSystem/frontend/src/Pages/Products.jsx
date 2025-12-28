@@ -30,8 +30,11 @@ const Products = () => {
 
     // Connect to SignalR for real-time updates
     signalRService.connect();
+    
+    // Connect to WebSocket for inventory updates
+    wsService.connect();
 
-    // Listen for inventory updates
+    // Listen for inventory updates via SignalR
     signalRService.on('StockUpdated', (data) => {
       setProducts(prev => prev.map(p =>
         p.sku === data.sku ? { ...p, stock: data.stock } : p
@@ -45,9 +48,77 @@ const Products = () => {
     signalRService.on('ProductDeleted', () => {
       fetchProducts();
     });
+    
+    // Listen for inventory updates via WebSocket
+    wsService.on('productUpdated', (data) => {
+      console.log('Product updated from inventory:', data);
+      console.log('Product data:', data.product);
+      const product = {
+        id: data.product.Id || data.product.id,
+        sku: data.product.Sku || data.product.sku,
+        name: data.product.Name || data.product.name,
+        description: data.product.Description || data.product.description,
+        price: data.product.Price || data.product.price || data.product.unit_price,
+        stock: data.product.Stock || data.product.stock
+      };
+      console.log('Mapped product:', product);
+      setProducts(prev => {
+        console.log('Current products SKUs:', prev.map(p => p.sku));
+        console.log('Looking for SKU:', product.sku);
+        const updated = prev.map(p => {
+          if (p.sku === product.sku) {
+            console.log('Updating product:', p, 'with:', product);
+            // Force complete object replacement to ensure re-render
+            return {
+              ...p,
+              id: product.id,
+              name: product.name,
+              description: product.description,
+              price: product.price,
+              unit_price: product.price, // Also update unit_price for compatibility
+              stock: product.stock,
+              sku: product.sku
+            };
+          }
+          return p;
+        });
+        
+        // If no product was updated, refresh the entire products list
+        const wasUpdated = updated.some((p, index) => p !== prev[index]);
+        if (!wasUpdated) {
+          console.log('No product found with SKU:', product.sku, '- refreshing products list');
+          fetchProducts(); // Refresh the entire list
+          return prev; // Return current state, fetchProducts will update it
+        }
+        
+        console.log('Updated products:', updated);
+        return updated;
+      });
+    });
+    
+    wsService.on('productAdded', (data) => {
+      console.log('Product added from inventory:', data);
+      fetchProducts(); // Refresh the entire list
+    });
+    
+    wsService.on('productDeleted', (data) => {
+      console.log('Product deleted from inventory:', data);
+      const productId = data.productId || data.ProductId;
+      setProducts(prev => prev.filter(p => p.id !== productId));
+    });
+    
+    wsService.on('stockUpdated', (data) => {
+      console.log('Stock updated from inventory:', data);
+      const sku = data.sku || data.Sku;
+      const stock = data.stock || data.Stock;
+      setProducts(prev => prev.map(p =>
+        p.sku === sku ? { ...p, stock: stock } : p
+      ));
+    });
 
     return () => {
       signalRService.disconnect();
+      wsService.disconnect();
     };
   }, []);
 

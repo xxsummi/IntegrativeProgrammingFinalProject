@@ -3,6 +3,8 @@ using InventorySystem.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.SignalR;
+using System.Text;
+using System.Text.Json;
 
 namespace InventorySystem.Controllers
 {
@@ -12,11 +14,13 @@ namespace InventorySystem.Controllers
     {
         private readonly ProductDbContext _context;
         private readonly IHubContext<InventoryHub> _hubContext;
+        private readonly HttpClient _httpClient;
 
-        public InventoryController(ProductDbContext context, IHubContext<InventoryHub> hubContext)
+        public InventoryController(ProductDbContext context, IHubContext<InventoryHub> hubContext, HttpClient httpClient)
         {
             _context = context;
             _hubContext = hubContext;
+            _httpClient = httpClient;
         }
 
         [HttpGet]
@@ -72,6 +76,10 @@ namespace InventorySystem.Controllers
             await _context.SaveChangesAsync();
             
             await _hubContext.Clients.Group("InventoryUsers").SendAsync("ProductAdded", product);
+            
+            // Notify sales system via WebSocket
+            await NotifySalesSystem("product-added", new { product });
+            
             return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
         }
 
@@ -95,6 +103,10 @@ namespace InventorySystem.Controllers
             await _context.SaveChangesAsync();
             
             await _hubContext.Clients.Group("InventoryUsers").SendAsync("StockUpdated", new { sku = existingProduct.Sku, stock = existingProduct.Stock });
+            
+            // Notify sales system via WebSocket
+            await NotifySalesSystem("product-updated", new { product = existingProduct });
+            
             return NoContent();
         }
 
@@ -107,6 +119,10 @@ namespace InventorySystem.Controllers
             await _context.SaveChangesAsync();
             
             await _hubContext.Clients.Group("InventoryUsers").SendAsync("ProductDeleted", id);
+            
+            // Notify sales system via WebSocket
+            await NotifySalesSystem("product-deleted", new { productId = id });
+            
             return NoContent();
         }
 
@@ -121,6 +137,10 @@ namespace InventorySystem.Controllers
             await _context.SaveChangesAsync();
             
             await _hubContext.Clients.Group("InventoryUsers").SendAsync("StockUpdated", new { sku = product.Sku, stock = product.Stock });
+            
+            // Notify sales system via WebSocket
+            await NotifySalesSystem("product-updated", new { product });
+            
             return Ok(new { stock = product.Stock });
         }
 
@@ -130,6 +150,20 @@ namespace InventorySystem.Controllers
             var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == sku);
             if (product == null) return NotFound();
             return Ok(product);
+        }
+
+        private async Task NotifySalesSystem(string endpoint, object data)
+        {
+            try
+            {
+                var json = JsonSerializer.Serialize(data);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                await _httpClient.PostAsync($"http://localhost:8082/notify/{endpoint}", content);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to notify sales system: {ex.Message}");
+            }
         }
     }
 

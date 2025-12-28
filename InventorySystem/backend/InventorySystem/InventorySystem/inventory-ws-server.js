@@ -2,9 +2,17 @@
 const WebSocket = require("ws");
 const { Pool } = require("pg");
 const axios = require("axios");
+const express = require("express");
+const cors = require("cors");
+
+// Create Express app for HTTP endpoints
+const app = express();
+app.use(cors());
+app.use(express.json());
 
 // WebSocket server port
 const PORT = 8081;
+const HTTP_PORT = 8082;
 
 // PostgreSQL pool using your appsettings.json connection info
 const pool = new Pool({
@@ -87,6 +95,47 @@ function broadcastToClients(message) {
     }
   });
 }
+
+// Function to notify sales system about inventory changes
+function notifySalesSystem(message) {
+  broadcastToClients(message);
+}
+
+// Export function for use by inventory controller
+module.exports = { notifySalesSystem };
+
+// HTTP endpoints for inventory controller to notify sales system
+app.post('/notify/product-updated', (req, res) => {
+  const { product } = req.body;
+  notifySalesSystem({
+    type: 'productUpdated',
+    product: product
+  });
+  res.json({ success: true });
+});
+
+app.post('/notify/product-added', (req, res) => {
+  const { product } = req.body;
+  notifySalesSystem({
+    type: 'productAdded',
+    product: product
+  });
+  res.json({ success: true });
+});
+
+app.post('/notify/product-deleted', (req, res) => {
+  const { productId } = req.body;
+  notifySalesSystem({
+    type: 'productDeleted',
+    productId: productId
+  });
+  res.json({ success: true });
+});
+
+// Start HTTP server
+app.listen(HTTP_PORT, () => {
+  console.log(`Inventory HTTP notification server running on http://localhost:${HTTP_PORT}`);
+});
 
 // Function to decrement stock in PostgreSQL
 async function decrementStock(sku, qty) {
