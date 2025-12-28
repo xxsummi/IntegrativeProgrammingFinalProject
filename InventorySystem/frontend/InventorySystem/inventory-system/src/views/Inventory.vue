@@ -65,7 +65,7 @@ const addProduct = async () => {
 
 <style scoped>
 .inventory-page {
-  margin: 0 5rem;
+  margin: 0 2rem;
 }
 
 .product-dialog .el-dialog__header {

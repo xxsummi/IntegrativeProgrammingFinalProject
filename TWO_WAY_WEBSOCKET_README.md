@@ -51,9 +51,10 @@ Sales Frontend ←→ Sales Backend ←→ WebSocket Server ←→ Inventory Bac
   - `stockUpdated` - Stock levels changed
 
 ### 4. Sales Frontend Components
-- **Products.jsx**: Real-time product list updates
-- **Sales.jsx**: Dashboard statistics and inventory updates
+- **Products.jsx**: Real-time product list updates with fallback refresh
+- **Sales.jsx**: Dashboard statistics using embedded sales data for consistency
 - **Shop.jsx**: Customer-facing product updates and cart management
+- **EmbeddedSales.jsx**: Real-time sales data and statistics updates
 
 ## Message Types
 
@@ -127,12 +128,15 @@ node test-two-way-websocket.js
 - **Product Management**: Add/edit/delete products sync across systems
 - **Price Changes**: Updated prices appear in sales system instantly
 - **Product Availability**: Out-of-stock items update in real-time
+- **Data Consistency**: Sales dashboard uses embedded sales API for accurate revenue/sales totals
+- **Fallback Mechanism**: Auto-refresh when SKU mismatches occur between systems
 
 ### 🔄 Automatic Updates
-- **Sales Dashboard**: KPIs and statistics update automatically
+- **Sales Dashboard**: KPIs and statistics update automatically using embedded sales data
 - **Product Lists**: Inventory changes reflect without page refresh
 - **Shopping Cart**: Stock validation and updates in real-time
 - **POS System**: Product availability and pricing stay current
+- **Revenue Tracking**: Consistent revenue calculations across all sales interfaces
 
 ## Error Handling
 - **Connection Loss**: Automatic reconnection with exponential backoff
