@@ -14,11 +14,14 @@ const Sales = () => {
   const [recentSales, setRecentSales] = useState([]);
   const [recentSalesLoading, setRecentSalesLoading] = useState(true);
   const [recentSalesError, setRecentSalesError] = useState('');
+  const [embeddedSalesData, setEmbeddedSalesData] = useState([]);
+  const [embeddedStatsData, setEmbeddedStatsData] = useState([]);
 
   useEffect(() => {
     const loadData = async () => {
       await fetchProducts();
       await fetchRecentSales();
+      await fetchEmbeddedSalesForRevenue();
       setStatsLoading(false);
       fetchStats();
     };
@@ -41,6 +44,7 @@ const Sales = () => {
         fetchProducts();
         fetchStats();
         fetchRecentSales();
+        fetchEmbeddedSalesForRevenue();
       }
     };
     
@@ -150,6 +154,27 @@ const Sales = () => {
     }
   };
 
+  const fetchEmbeddedSalesForRevenue = async () => {
+    try {
+      const [salesRes, statsRes] = await Promise.all([
+        fetch('http://localhost:3000/api/sales/embedded'),
+        fetch('http://localhost:3000/api/sales/embedded/stats')
+      ]);
+      
+      if (salesRes.ok) {
+        const salesData = await salesRes.json();
+        setEmbeddedSalesData(salesData || []);
+      }
+      
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setEmbeddedStatsData(statsData || []);
+      }
+    } catch (err) {
+      console.error('Error fetching embedded sales for revenue:', err);
+    }
+  };
+
   // Merge products with total sold from recentSales dynamically
   const mergedProducts = (Array.isArray(products) ? products : []).map(p => {
     const totalSold = recentSales
@@ -181,7 +206,7 @@ const Sales = () => {
         <div className="kpi-card revenue">
           <div className="kpi-icon"><PiMoneyBold /></div>
           <div className="kpi-content">
-            <div className="kpi-value">₱{recentSales.reduce((sum, sale) => sum + (Number(sale.unit_price) * Number(sale.quantity)), 0)}</div>
+            <div className="kpi-value">₱{embeddedSalesData.reduce((sum, sale) => sum + Number(sale.total || 0), 0)}</div>
             <div className="kpi-label">Total Revenue</div>
           </div>
         </div>
@@ -189,7 +214,7 @@ const Sales = () => {
         <div className="kpi-card sales">
           <div className="kpi-icon"><PiChartLineUpBold /></div>
           <div className="kpi-content">
-            <div className="kpi-value">{mergedProducts.reduce((sum, p) => sum + p.total_sold, 0)}</div>
+            <div className="kpi-value">{Array.isArray(embeddedStatsData) ? embeddedStatsData.reduce((sum, item) => sum + Number(item.total_quantity || 0), 0) : 0}</div>
             <div className="kpi-label">Total Sales</div>
           </div>
         </div>

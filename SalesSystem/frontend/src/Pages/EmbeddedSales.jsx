@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import wsService from '../services/websocket';
 import './EmbeddedSales.css';
 
 const EmbeddedSales = () => {
@@ -36,6 +37,37 @@ const EmbeddedSales = () => {
 
   useEffect(() => {
     fetchData();
+    
+    // Connect to WebSocket for real-time updates
+    wsService.connect();
+    
+    // Listen for sales-related updates
+    wsService.on('message', (data) => {
+      if (data.status === 'success') {
+        fetchData(); // Refresh when sales are made
+      }
+    });
+    
+    // Listen for inventory updates that might affect sales data
+    wsService.on('productUpdated', () => {
+      fetchData(); // Refresh sales data when products are updated
+    });
+    
+    wsService.on('productAdded', () => {
+      fetchData(); // Refresh sales data when products are added
+    });
+    
+    wsService.on('productDeleted', () => {
+      fetchData(); // Refresh sales data when products are deleted
+    });
+    
+    wsService.on('stockUpdated', () => {
+      fetchData(); // Refresh sales data when stock is updated
+    });
+    
+    return () => {
+      wsService.disconnect();
+    };
   }, []);
 
   const totalSales = Array.isArray(stats)
